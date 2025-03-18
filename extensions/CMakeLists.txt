@@ -1,10 +1,5 @@
 cmake_policy(SET CMP0037 OLD)
 
-find_package(OpenSSL)
-find_package(RapidJSON)
-find_package(CURL)
-
-add_library(Aliyun\ Translate MODULE aliyuntranslate.cpp translatewrapperaliyun.cpp network.cpp extensionimpl.cpp)
 add_library(Bing\ Translate MODULE bingtranslate.cpp translatewrapper.cpp network.cpp extensionimpl.cpp)
 add_library(Bing\ Translate2 MODULE bingtranslate2.cpp translatewrapper.cpp network.cpp extensionimpl.cpp)
 add_library(Copy\ to\ Clipboard MODULE copyclipboard.cpp extensionimpl.cpp)
@@ -33,7 +28,6 @@ add_library(Thread\ Linker MODULE threadlinker.cpp extensionimpl.cpp)
 add_library(Translate\ Bridge MODULE translatebridge.cpp translatewrapperlite.cpp network.cpp extensionimpl.cpp)
 add_library(Yandex\ Translate MODULE yandextranslate.cpp translatewrapper.cpp network.cpp extensionimpl.cpp)
 
-target_precompile_headers(Aliyun\ Translate REUSE_FROM pch)
 target_precompile_headers(Bing\ Translate REUSE_FROM pch)
 target_precompile_headers(Bing\ Translate2 REUSE_FROM pch)
 target_precompile_headers(Copy\ to\ Clipboard REUSE_FROM pch)
@@ -62,7 +56,6 @@ target_precompile_headers(Thread\ Linker REUSE_FROM pch)
 target_precompile_headers(Translate\ Bridge REUSE_FROM pch)
 target_precompile_headers(Yandex\ Translate REUSE_FROM pch)
 
-target_link_libraries(Aliyun\ Translate winhttp Qt5::Widgets openssl::openssl rapidjson CURL::libcurl)
 target_link_libraries(Bing\ Translate winhttp Qt5::Widgets)
 target_link_libraries(Bing\ Translate2 winhttp Qt5::Widgets)
 target_link_libraries(DeepL\ Translate winhttp Qt5::Widgets)

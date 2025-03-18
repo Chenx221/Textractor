@@ -8,13 +8,6 @@
       "inheritEnvironments": [ "msvc_x86" ]
     },
     {
-      "name": "x86-RelWithDebInfo",
-      "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
-      "cmakeCommandArgs": "-DQT_ROOT=/Qt",
-      "inheritEnvironments": [ "msvc_x86" ]
-    },
-    {
       "name": "x64-Debug",
       "generator": "Ninja",
       "configurationType": "Debug",
@@ -22,10 +15,23 @@
       "inheritEnvironments": [ "msvc_x64" ]
     },
     {
-      "name": "x64-RelWithDebInfo",
+      "name": "x86-Release",
       "generator": "Ninja",
-      "configurationType": "RelWithDebInfo",
+      "configurationType": "Release",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "-DQT_ROOT=/Qt",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x86" ]
+    },
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "cmakeCommandArgs": "-DQT_ROOT=/Qt",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64" ]
     }
   ]

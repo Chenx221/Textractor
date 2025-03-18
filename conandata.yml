@@ -1,7 +1,0 @@
-# This file is managed by Conan, contents will be overwritten.
-# To keep your changes, remove these comment lines, but the plugin won't be able to modify your requirements
-
-requirements:
-  - "libcurl/8.12.1"
-  - "rapidjson/1.1.0"
-  - "openssl/3.4.1"
