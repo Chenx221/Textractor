@@ -1,8 +1,8 @@
 ﻿#include "qtcommon.h"
 #include "translatewrapperaliyun.h"
 #include "network.h"
-#include <rapidjson/document.h>
-#include <curl/curl.h>
+// #include <rapidjson/document.h>
+// #include <curl/curl.h>
 
 extern const wchar_t *TRANSLATION_ERROR;
 
@@ -452,15 +452,15 @@ extern const std::unordered_map<std::wstring, std::wstring> codes
 bool translateSelectedOnly = false, useRateLimiter = true, rateLimitSelected = false, useCache = true, useFilter = true;
 int tokenCount = 30, rateLimitTimespan = 60000, maxSentenceSize = 5000;
 
-std::string UrlEncode(CURL *curl, const std::string &value) {
-    char *output = curl_easy_escape(curl, value.c_str(), value.length());
-    std::string encoded(output);
-    curl_free(output);
-    return encoded;
-}
+// std::string UrlEncode(CURL *curl, const std::string &value) {
+//     char *output = curl_easy_escape(curl, value.c_str(), value.length());
+//     std::string encoded(output);
+//     curl_free(output);
+//     return encoded;
+// }
 
 std::pair<bool, std::wstring> Translate(const std::wstring &text, TranslationParam tlp) {
-    CURL *curl = curl_easy_init();
+    // CURL *curl = curl_easy_init();
     if (tlp.authKey.empty() || tlp.translateVersion == L"free") {
         static Synchronized<std::wstring> csrf;
         if (csrf->empty()) {
@@ -470,10 +470,12 @@ std::pair<bool, std::wstring> Translate(const std::wstring &text, TranslationPar
                 L"GET",
                 L"/api/translate/csrftoken"
             }) {
-                rapidjson::GenericDocument<rapidjson::UTF16<wchar_t> > jsonResponse;
-                jsonResponse.Parse(httpRequest.response.c_str());
-                if (jsonResponse.HasMember(L"token") && jsonResponse[L"token"].IsString()) {
-                    csrf->assign(jsonResponse[L"token"].GetString());
+                if (auto token = Copy(JSON::Parse(httpRequest.response)[L"token"].String())){
+                    csrf->assign(token.value());
+                // rapidjson::GenericDocument<rapidjson::UTF16<wchar_t> > jsonResponse;
+                // jsonResponse.Parse(httpRequest.response.c_str());
+                // if (jsonResponse.HasMember(L"token") && jsonResponse[L"token"].IsString()) {
+                //     csrf->assign(jsonResponse[L"token"].GetString());
                 } else {
                     return {false, L"CSRF token not found"};
                 }
@@ -487,7 +489,7 @@ std::pair<bool, std::wstring> Translate(const std::wstring &text, TranslationPar
             FormatString(R"(srcLang=%S&tgtLang=%S&domain=general&query=%s&_csrf=%s)",
                          codes.at(tlp.translateFrom),
                          codes.at(tlp.translateTo),
-                         UrlEncode(curl, WideStringToString(text)),
+                         WideStringToString(text),
                          WideStringToString(csrf.Copy())),
             L"Content-Type: application/x-www-form-urlencoded"
         }) {
@@ -495,6 +497,7 @@ std::pair<bool, std::wstring> Translate(const std::wstring &text, TranslationPar
                 return {true, HTML::Unescape(translation.value())};
             return {false, FormatString(L"%s: %s", TRANSLATION_ERROR, httpRequest.response)};
         }
+        else return { false, FormatString(L"%s (code=%u)", TRANSLATION_ERROR, httpRequest.errorCode) };
     } else if (tlp.translateVersion == L"pro") {
         return {false, L"Pro version not implemented"};
     } else {
