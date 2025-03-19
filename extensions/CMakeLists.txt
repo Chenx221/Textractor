@@ -34,6 +34,7 @@ add_library(Thread\ Linker MODULE threadlinker.cpp extensionimpl.cpp)
 add_library(Translate\ Bridge MODULE translatebridge.cpp translatewrapperlite.cpp network.cpp extensionimpl.cpp)
 add_library(Yandex\ Translate MODULE yandextranslate.cpp translatewrapper.cpp network.cpp extensionimpl.cpp)
 
+target_precompile_headers(Aliyun\ Translate REUSE_FROM pch)
 target_precompile_headers(Bing\ Translate REUSE_FROM pch)
 target_precompile_headers(Bing\ Translate2 REUSE_FROM pch)
 target_precompile_headers(Copy\ to\ Clipboard REUSE_FROM pch)
