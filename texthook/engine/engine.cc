@@ -15860,9 +15860,44 @@ bool InsertPONScripterJapHook()
   return true;
 }
 
+bool InsertOldPONScripterHook()
+{
+  //by Chenx221
+    /*
+    * Sample games:
+    * https://vndb.org/r33682 Narcissu 1st & 2nd
+    */
+const BYTE bytes[] = {
+    0x8D, 0x50, 0x01,           // lea edx, [eax+1]
+    0x89, 0x55, 0xB0,           // mov [ebp-50], edx    << hook here
+    0x0F, 0xB6, 0x40, 0x01,     // movzx eax, byte ptr [eax+1]
+    0x89, 0xDA,                 // mov edx, ebx
+    0x8D, 0x75, 0xC8,           // lea esi, [ebp-38]
+    0x8D, 0x5D, 0xD8            // lea ebx, [ebp-28]
+};
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:OldPONScripter: pattern not found");
+    return false;
+  }
+
+  HookParam hp = {};
+  hp.address = addr+3;
+  hp.offset = pusha_edx_off -4;
+  hp.index = 0;
+  hp.codepage = 65001;
+  hp.type = USING_STRING;
+  hp.filter_fun = PONScripterFilter;
+  ConsoleOutput("vnreng: INSERT OldPONScripter");
+  NewHook(hp, "OldPONScripter");
+  return true;
+}
+
 bool InsertPONScripterHooks()
 {
-  bool ok = InsertPONScripterEngHook() && InsertPONScripterJapHook();
+  bool ok = InsertPONScripterEngHook() && InsertPONScripterJapHook() || InsertOldPONScripterHook() ;
   return  ok || InsertPONScripterHook(); // If a language hook is missing, the original code is executed
 }
 

@@ -131,7 +131,7 @@ bool DeterminePCEngine()
 
 bool DetermineEngineByFile1()
 {
-	if (Util::SearchResourceString(L"Proportional ONScripter") || Util::SearchResourceString(L"ponscr.exe"))
+	if (Util::SearchResourceString(L"Proportional ONScripter") || Util::SearchResourceString(L"ponscr.exe") || Util::CheckFile(L"pns.cfg"))
 	{
 		InsertPONScripterHooks();
 		return true;
