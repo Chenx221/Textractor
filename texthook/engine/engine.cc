@@ -26102,6 +26102,56 @@ bool InsertGameMakerHook()
   return true;
 }
 
+bool GameMaker2Filter(LPVOID data, DWORD *size, HookParam *, BYTE)
+{
+  auto text = reinterpret_cast<LPSTR>(data);
+  static std::string prevText;
+  if (!prevText.compare(text))
+    return false;
+  prevText = text;
+  return true;
+}
+bool InsertGameMaker2Hook()
+{
+// By Chenx221
+// Tested: RJ324347
+// Due to the lack of testing on more games, I cannot guarantee compatibility with other GM2 games :(
+
+//0055B931 | 8B7D F0            | mov edi,dword ptr ss:[ebp-10]            |
+//0055B934 | 8B45 EC            | mov eax,dword ptr ss:[ebp-14]            |
+//0055B937 | 8BDF               | mov ebx,edi                              |
+//0055B939 | 33F6               | xor esi,esi                              |
+//0055B93B | 895D E8            | mov dword ptr ss:[ebp-18],ebx            | <-- ebx
+//0055B93E | 85C0               | test eax,eax                             |
+  const BYTE bytes[] = {
+    0x8B, 0x7D, 0xF0,
+    0x8B, 0x45, 0xEC,
+    0x8B, 0xDF,
+    0x33, 0xF6,
+    0x89, 0x5D, 0xE8 ,
+    0x85, 0xC0
+  };
+  enum { addr_offset = sizeof(bytes) - 5 };
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:GameMaker2: pattern not found");
+    return false;
+  }
+
+  HookParam hp = {};
+  hp.address = addr + addr_offset;
+  hp.offset = pusha_ebx_off -4;
+  hp.index = 0;
+  hp.type = USING_UTF8 | USING_STRING;
+  hp.filter_fun = GameMaker2Filter;
+  ConsoleOutput("vnreng: INSERT GameMaker2 Hook(string_copy)");
+  NewHook(hp, "GameMaker2");
+  ConsoleOutput("vnreng:GameMaker2");
+  return true;
+}
+
 bool DxLibFilter(LPVOID data, DWORD *size, HookParam *, BYTE)
 {
   auto text = reinterpret_cast<LPSTR>(data);

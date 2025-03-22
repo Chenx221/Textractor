@@ -465,6 +465,10 @@ bool DetermineEngineByFile4()
     if (InsertGameMakerHook())
       return true;
   }
+  if (Util::SearchResourceString(L"A GameMaker Studio 2 Game")) {
+    if (InsertGameMaker2Hook())
+      return true;
+  }
   if (Util::CheckFile(L"*.bcx")) {
     if (InsertDxLibHook())
       return true;

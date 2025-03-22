@@ -166,6 +166,7 @@ bool InsertYukaSystemHooks();   // YukaSystem2: *.ykc
 bool InsertYurisHook();         // YU-RIS: *.ypf
 bool InsertDebonosuWorksHook(); // DebonosuWorks: resource string
 bool InsertGameMakerHook();     // GameMaker: GMResource.dll
+bool InsertGameMaker2Hook();
 bool InsertDxLibHook();         // DxLib: *.bcx
 bool InsertCodeXHook();         // codeX RScript: *.xfl
 bool InsertYaneSDKHook();       // YaneSDK: arc/evimage.dat
