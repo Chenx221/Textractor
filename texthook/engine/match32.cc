@@ -618,10 +618,14 @@ bool DetermineEngineByFile4()
   // - 東京NECRO
   // - TokyoNecro.exe in "OriginalFilename"
   if (Util::CheckFile(L"*.npk")) {
+    bool status = false;
     if (Util::SearchResourceString(L"TOKYONECRO")) {
-      InsertTokyoNecroHook();
+      status = InsertTokyoNecroHook();
     }
-    else {
+    if (!status){
+      status = InsertNitroPlusNewHook();
+    }
+    if (!status) {
       ConsoleOutput("vnreng: IGNORE new Nitroplus");
     }
     return true;

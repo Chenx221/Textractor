@@ -133,6 +133,7 @@ bool InsertNextonHook();        // NEXTON: aInfo.db
 bool InsertNexton1Hook();
 bool InsertNitroplusHooks();    // Nitroplus: *.npa
 bool InsertTokyoNecroHook();    // Nitroplus TokyoNecro: *.npk, resource string
+bool InsertNitroPlusNewHook();
 bool InsertPalHook();           // AMUSE CRAFT: *.pac
 bool InsertPensilHook();        // Pensil: PSetup.exe
 bool InsertPONScripterHooks();

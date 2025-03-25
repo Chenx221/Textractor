@@ -8547,6 +8547,77 @@ bool InsertTokyoNecroHook()
     return TokyoNecro::TextHook();
 }
 
+bool InsertNitroPlusNewHook() {
+  // By Chenx221
+  // Tested: https://vndb.org/r64727 & https://vndb.org/v13666
+  //
+
+  //0084DD9A | 53                 | push ebx                        |
+  //0084DD9B | 57                 | push edi                        |
+  //0084DD9C | 68 182D9400        | push saya_steam.942D18          | 942D18:"create"
+  //0084DDA1 | 68 80EA8400        | push <saya_steam.Create>        | <--
+  //0084DDA6 | 8BCE               | mov ecx,esi                     |
+  //0084DDA8 | E8 032D0000        | call saya_steam.850AB0          |
+  //0084DDAD | 53                 | push ebx                        |
+  //0084DDAE | 57                 | push edi                        |
+  //0084DDAF | 68 18239400        | push saya_steam.942318          | 942318:"link"
+  //0084DDB4 | 68 B0B18300        | push saya_steam.83B1B0          |
+  //0084DDB9 | 8BCE               | mov ecx,esi                     |
+  //0084DDBB | E8 902D0000        | call saya_steam.850B50          |
+  //0084DDC0 | 53                 | push ebx                        |
+  //0084DDC1 | 57                 | push edi                        |
+  //0084DDC2 | 68 FC459400        | push saya_steam.9445FC          | 9445FC:"print"
+  //0084DDC7 | 68 20EB8400        | push <saya_steam.Print>         | <--
+  //0084DDCC | 8BCE               | mov ecx,esi                     |
+  //0084DDCE | E8 7D2D0000        | call saya_steam.850B50          |
+
+  //Some games use both Create and Print for text simultaneously. You can try the Thread Linker.
+
+  const BYTE funNameCode1[] = {
+    0x00, 0x70, 0x72, 0x69, 0x6E, 0x74, 0x00 //print
+  };
+  const BYTE funNameCode2[] = {
+    0x00, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65, 0x00 //create
+  };
+
+  ULONG addr1 = MemDbg::findBytes(funNameCode1, sizeof(funNameCode1), processStartAddress, processStopAddress);
+
+
+  int status = 0;
+
+  if (addr1) {
+    DWORD pushPrintAddr = MemDbg::findPushDwordAddress(addr1+1, processStartAddress, processStopAddress);
+    if (pushPrintAddr){
+      DWORD funaddr1 = *(DWORD *)(pushPrintAddr + 6);
+      status++;
+      HookParam hp = {};
+      hp.address = funaddr1;
+      hp.offset = pusha_eax_off - 4;;
+      hp.type = USING_STRING;
+      ConsoleOutput("Textractor: INSERT NitroPlusNewHook (Print)");
+      NewHook(hp, "NitroPlusNewHook_Print");
+
+      ULONG addr2 = MemDbg::findBytes(funNameCode2, sizeof(funNameCode2), processStartAddress, processStopAddress);
+      if (addr2) {
+        DWORD pushCreateAddr = MemDbg::findPushDwordAddress(addr2+1, pushPrintAddr-0x30, pushPrintAddr);
+        if (pushCreateAddr){
+          DWORD funaddr2 = *(DWORD *)(pushCreateAddr + 6);
+          status++;
+          HookParam hp = {};
+          hp.address = funaddr2;
+          hp.offset = pusha_eax_off - 4;;
+          hp.type = USING_STRING;
+          ConsoleOutput("Textractor: INSERT NitroPlusNewHook (Create)");
+          NewHook(hp, "NitroPlusNewHook_Create");
+        }
+      }
+    }
+  } else{
+    ConsoleOutput("Textractor:NitroPlusNewHook: function not found");
+  }
+  return status;
+}
+
 // jichi 6/21/2015
 namespace { // unnamed
 
@@ -11903,6 +11974,114 @@ static bool InsertWillPlus6()
   return true;
 }
 
+static bool InsertWillPlus7()
+{
+  //by Chenx221
+  /*
+  * 1.9.9.15, 1.9.9.14, 1.9.9.12, 1.9.9.9, 1.9.9.8, 1.9.9.4, 1.9.7.3
+  */
+const BYTE bytes[] = {
+    0x55,                               // push ebp   <-- hook here
+    0x8B, 0xEC,                         // mov ebp,esp
+    0x83, 0xE4, 0xF8,                   // and esp,FFFFFFF8
+    0x81, 0xEC, 0x14, 0x01, 0x00, 0x00, // sub esp,114
+    0xA1, XX4,       // mov eax,dword ptr ds:[5CD040]
+    0x33, 0xC4,                         // xor eax,esp
+    0x89, 0x84, 0x24, 0x10, 0x01, 0x00, 0x00, // mov dword ptr ss:[esp+110],eax
+    0x53,                               // push ebx
+    0x8B, 0x5D, 0x08,                   // mov ebx,dword ptr ss:[ebp+8]
+    0x56,                               // push esi
+    0x8B, 0xF2,                         // mov esi,edx
+    0x89, 0x4C, 0x24, 0x0C,             // mov dword ptr ss:[esp+C],ecx
+    0x57,                               // push edi
+    0x8B, 0x7D, 0x0C,                   // mov edi,dword ptr ss:[ebp+C]
+    0x3B, 0xDE,                         // cmp ebx,esi
+    0x73, 0x72,                         // jae advhd.4067AF
+    0x68, 0x00, 0x01, 0x00, 0x00,       // push 100
+    0x8D, 0x44, 0x24, 0x1C              // lea eax,dword ptr ss:[esp+1C]
+};
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:WillPlus7: pattern not found");
+    return false;
+  }
+
+  HookParam hp = {};
+  hp.address = addr;
+  hp.offset = pusha_ecx_off -4;
+  hp.index = 0;
+  hp.type = USING_UNICODE | USING_STRING;
+  ConsoleOutput("vnreng: INSERT WillPlus7");
+  NewHook(hp, "WillPlus7");
+  return true;
+}
+
+static bool InsertWillPlus8()
+{
+  //This seems somewhat similar to the previously commented-out WillPlus2 code, but my search pattern appears to be more effective. :)
+  //by Chenx221
+  /*
+  * 1.9.9.15, 1.9.9.14, 1.9.9.12, 1.9.9.9, 1.9.9.8, 1.9.9.4, 1.9.7.3
+  */
+const BYTE bytes1[] = {
+    0x98,                               // cwde
+    0x89, XX,                         // mov dword ptr ds:[ebx],eax
+    0x8B, XX, 0x64,                   // mov eax,dword ptr ds:[edi+64]
+    0xE9, XX4,                   // jmp 1.9.7.3_4544347d_advhd.40CCCB
+    0x83, XX, 0x20,                   // cmp esi,20
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC9E
+    0x81, XX, 0x00, 0x30, 0x00, 0x00, // cmp esi,3000  // <--
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC9E
+    0x8B, XX, XX,                   // mov ecx,dword ptr ss:[ebp-58]
+    0x85, XX,                         // test ecx,ecx
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC7B
+    0xFF, 0x75, XX                    // push dword ptr ss:[ebp-50]
+};
+const BYTE bytes2[] = {
+    0x98,                               // cwde
+    0x89, XX,                         // mov dword ptr ds:[ebx],eax
+    0x8B, XX, 0x64,                   // mov eax,dword ptr ds:[edi+64]
+    0xE9, XX4,                   // jmp 1.9.7.3_4544347d_advhd.40CCCB
+    0x83, XX, 0x20,                   // cmp esi,20
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC9E
+    0x3D, 0x00, 0x30, 0x00, 0x00, // <--
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC9E
+    0x8B, XX, XX,                   // mov ecx,dword ptr ss:[ebp-58]
+    0x85, XX,                         // test ecx,ecx
+    0x74, XX,                         // je 1.9.7.3_4544347d_advhd.40CC7B
+    0xFF, 0x75, XX                    // push dword ptr ss:[ebp-50]
+};
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes1, sizeof(bytes1), processStartAddress, processStartAddress + range);
+  HookParam hp = {};
+  if (!addr) {
+     addr = MemDbg::findBytes(bytes2, sizeof(bytes2), processStartAddress, processStartAddress + range);
+     if (!addr) {
+       ConsoleOutput("vnreng:WillPlus8: pattern not found");
+       return false;
+     }
+     hp.offset = pusha_eax_off -4;
+  }else{
+    BYTE byte = *(BYTE*)(addr + 17);
+    if(byte >=0xf9 && byte <=0xff){
+       hp.offset = -12 - (byte-0xf9)*4;
+    }else{
+       ConsoleOutput("vnreng:WillPlus8: pattern not found");
+       return false;
+    }
+  }
+
+  hp.address = addr+16;
+  hp.index = 0;
+  hp.type = USING_UNICODE;
+  hp.length_offset = 1;
+  ConsoleOutput("vnreng: INSERT WillPlus8");
+  NewHook(hp, "WillPlus8");
+  return true;
+}
+
 } // unnamed namespace
 
 bool InsertWillPlusHook()
@@ -11911,6 +12090,8 @@ bool InsertWillPlusHook()
   ok = InsertWillPlus4() || ok;
   ok = InsertWillPlus5() || ok;
   ok = InsertWillPlus6() || ok;
+  ok = InsertWillPlus7() || ok;
+  ok = InsertWillPlus8() || ok;
   ok = InsertWillPlusWHook() || InsertWillPlusAHook() || ok;
   ok = InsertWillPlusExHook() || ok;
   ok = InsertNewWillPlusHook() || ok;
@@ -26605,19 +26786,73 @@ bool InsertA98sysHook()
 
   ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
   ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
-  if (!addr) {
-    ConsoleOutput("vnreng:A98sys: pattern not found");
-    return false;
+  if (addr) {
+    HookParam hp = {};
+    hp.address = addr;
+    hp.offset = pusha_ecx_off -4;
+    hp.index = 0;
+    hp.type = USING_STRING;
+    ConsoleOutput("vnreng: INSERT A98sys");
+    NewHook(hp, "A98sys");
+    return true;
   }
 
-  HookParam hp = {};
-  hp.address = addr;
-  hp.offset = pusha_ecx_off -4;
-  hp.index = 0;
-  hp.type = USING_STRING;
-  ConsoleOutput("vnreng: INSERT A98sys");
-  NewHook(hp, "A98sys");
-  return true;
+  //By Chenx221
+  //Tested: https://vndb.org/v1030 Bible Black -The Infection-
+//00427590 | 83EC 10            | sub esp,10                               |  <--hook
+//00427593 | 53                 | push ebx                                 |
+//00427594 | 55                 | push ebp                                 |
+//00427595 | 8B6C24 1C          | mov ebp,dword ptr ss:[esp+1C]            | [esp+1C]:"赛u"
+//00427599 | 8B5C24 24          | mov ebx,dword ptr ss:[esp+24]            |
+//HS932#4:-C@27590:BB_INFECTION.EXE
+//const BYTE bytes2[] = {
+//    0x83, 0xEC, 0x10,        // sub esp,10
+//    0x53,                    // push ebx
+//    0x55,                    // push ebp
+//    0x8B, 0x6C, 0x24, 0x1C,  // mov ebp,dword ptr ss:[esp+1C]
+//    0x8B, 0x5C, 0x24, 0x24   // mov ebx,dword ptr ss:[esp+24]
+//};
+//00412C9F | 90                 | nop                                      |
+//00412CA0 | A1 788D5200        | mov eax,dword ptr ds:[528D78]            | <--hook
+//00412CA5 | 8B0D 808D5200      | mov ecx,dword ptr ds:[528D80]            |
+//00412CAB | 8B15 C8DB5200      | mov edx,dword ptr ds:[52DBC8]            |
+//00412CB1 | 03C8               | add ecx,eax                              |
+//HSN932#4@12CA0:BB_INFECTION.EXE
+const BYTE bytes3[] = {
+    0x90,                    // nop
+    0xA1, XX4,               // mov eax, dword ptr ds:[528D78] // <--
+    0x8B, 0x0D, XX4,         // mov ecx, dword ptr ds:[528D80]
+    0x8B, 0x15, XX4,         // mov edx, dword ptr ds:[52DBC8]
+    0x03, 0xC8               // add ecx, eax
+};
+
+  addr = MemDbg::findBytes(bytes3, sizeof(bytes3), processStartAddress, processStartAddress + range);
+  if (addr) {
+    HookParam hp = {};
+    hp.address = addr+1;
+    hp.offset = 0x4;
+    hp.index = 0;
+    hp.type = USING_STRING | NO_CONTEXT;
+    hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+    {//Got a problem? Fix it after it crashes.
+      auto text = reinterpret_cast<LPSTR>(data);
+      auto len = reinterpret_cast<DWORD*>(size);
+      if (*len > 0) {
+        text[*len] = ' ';
+        text[*len + 1] = '\0';
+        (*len)++;
+      }
+      return true;
+    };
+    ConsoleOutput("vnreng: INSERT A98sys");
+    ConsoleOutput("Tips: Don't forget to maximize the game text speed.");
+    NewHook(hp, "A98sys");
+    return true;
+  }
+
+
+  ConsoleOutput("vnreng:A98sys: pattern not found");
+  return false;
 }
 
 bool InsertOtomeHook()
