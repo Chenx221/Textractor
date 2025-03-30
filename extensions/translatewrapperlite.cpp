@@ -1,11 +1,16 @@
 ﻿#include "qtcommon.h"
 #include "extension.h"
-#include "translatewrapperlite.h"
 #include "blockmarkup.h"
+#include "translatewrapperlite.h"
 #include <concurrent_priority_queue.h>
 #include <fstream>
 #include <QComboBox>
 
+#include "../texthook/main.h"
+
+extern const char *NATIVE_LANGUAGE;
+extern const char *TRANSLATE_TO;
+extern const char *TRANSLATE_FROM;
 extern const char *TRANSLATE_SELECTED_THREAD_ONLY;
 extern const char *RATE_LIMIT_ALL_THREADS;
 extern const char *RATE_LIMIT_SELECTED_THREAD;
@@ -19,7 +24,8 @@ extern const wchar_t *TRANSLATION_ERROR;
 extern const wchar_t *TOO_MANY_TRANS_REQUESTS;
 
 extern const char *TRANSLATION_PROVIDER;
-extern bool enable, translateSelectedOnly, useRateLimiter, rateLimitSelected, useCache, useFilter;
+extern const QStringList languagesTo, languagesFrom;
+extern bool translateSelectedOnly, useRateLimiter, rateLimitSelected, useCache, useFilter;
 extern int tokenCount, rateLimitTimespan, maxSentenceSize, port;
 
 std::pair<bool, std::wstring> Translate(const std::wstring &text, TranslationParam tlp);
@@ -32,7 +38,7 @@ namespace {
     Synchronized<std::unordered_map<std::wstring, std::wstring> > translationCache;
 
     std::string CacheFile() {
-        return FormatString("%s Cache (%S).txt", TRANSLATION_PROVIDER, "bridge");
+        return FormatString("%s Cache (%S).txt", TRANSLATION_PROVIDER, tlp->translateTo);
     }
 
     void SaveCache() {
@@ -66,8 +72,28 @@ public:
         auto infoLabel = new QLabel("Q: How do I set the source language, target language, and API key?\nA: You need to modify the corresponding translate API's .env file.", this);
         display->addRow(infoLabel);
 
+        auto translateToCombo = new QComboBox(this);
+        translateToCombo->addItems(languagesTo);
+        int i = -1;
+        if (settings.contains(TRANSLATE_TO)) i = translateToCombo->findText(settings.value(TRANSLATE_TO).toString());
+        if (i < 0) i = 0;
+        translateToCombo->setCurrentIndex(i);
+        SaveTranslateTo(translateToCombo->currentText());
+        display->addRow(TRANSLATE_TO, translateToCombo);
+        connect(translateToCombo, &QComboBox::currentTextChanged, this, &Window::SaveTranslateTo);
+
+        auto translateFromCombo = new QComboBox(this);
+        translateFromCombo->addItems(languagesFrom);
+        i = -1;
+        if (settings.contains(TRANSLATE_FROM)) i = translateFromCombo->findText(
+                                                   settings.value(TRANSLATE_FROM).toString());
+        if (i < 0) i = 0;
+        translateFromCombo->setCurrentIndex(i);
+        SaveTranslateFrom(translateFromCombo->currentText());
+        display->addRow(TRANSLATE_FROM, translateFromCombo);
+        connect(translateFromCombo, &QComboBox::currentTextChanged, this, &Window::SaveTranslateFrom);
+
         for (auto [value, label]: Array<bool &, const char *>{
-                 {enable, "Enable"},
                  {translateSelectedOnly, TRANSLATE_SELECTED_THREAD_ONLY},
                  {useRateLimiter, RATE_LIMIT_ALL_THREADS},
                  {rateLimitSelected, RATE_LIMIT_SELECTED_THREAD},
@@ -106,6 +132,17 @@ public:
 
     ~Window() {
         SaveCache();
+    }
+
+private:
+    void SaveTranslateTo(QString language) {
+        SaveCache();
+        settings.setValue(TRANSLATE_TO, S(tlp->translateTo = S(language)));
+        LoadCache();
+    }
+
+    void SaveTranslateFrom(QString language) {
+        settings.setValue(TRANSLATE_FROM, S(tlp->translateFrom = S(language)));
     }
 
 } window;
@@ -180,4 +217,11 @@ bool ProcessSentence(std::wstring &sentence, SentenceInfo sentenceInfo) {
     sentence += L"\x200b \n" + translation;
     return true;
 }
+
+extern const std::unordered_map<std::wstring, std::wstring> codes;
+TEST(
+    {
+        // assert(Translate(L"こんにちは",{ L"?", L"?"}).second.find(L"ello") == 1 || strstr(TRANSLATION_PROVIDER, "DevTools"));
+    }
+);
 

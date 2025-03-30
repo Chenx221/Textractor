@@ -2,5 +2,5 @@
 
 struct TranslationParam
 {
-	// int port;
+	std::wstring translateTo, translateFrom;
 };

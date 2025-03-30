@@ -60,6 +60,26 @@ namespace HTML
 				}) if (std::char_traits<C>::compare(text.data() + i, original, length) == 0) text.replace(i, length, 1, replacement);
 		return text;
 	}
+
+	template <typename C>
+	std::basic_string<C> Escape(const std::basic_string<C>& text)
+	{
+		std::basic_string<C> result;
+		result.reserve(text.size() * 2);
+
+		for (auto ch : text) {
+			switch (ch) {
+				case '<': result.append({ '&', 'l', 't', ';' }); break;
+				case '>': result.append({ '&', 'g', 't', ';' }); break;
+				case '\'': result.append({ '&', 'a', 'p', 'o', 's', ';' }); break;
+				case '"': result.append({ '&', 'q', 'u', 'o', 't', ';' }); break;
+				case '&': result.append({ '&', 'a', 'm', 'p', ';' }); break;
+				default: result.push_back(ch);
+			}
+		}
+
+		return result;
+	}
 }
 
 namespace JSON
@@ -94,12 +114,50 @@ namespace JSON
 	};
 
 	template <typename C>
+	std::basic_string<C> Unescape(const std::basic_string<C>& text)
+	{
+		std::basic_string<C> result;
+		result.reserve(text.size());
+
+		for (size_t i = 0; i < text.size(); ++i) {
+			if (text[i] == '\\' && i + 1 < text.size()) {
+				switch (text[i + 1]) {
+					case 'n': result.push_back('\n'); break;
+					case 'r': result.push_back('\r'); break;
+					case 't': result.push_back('\t'); break;
+					case '\\': result.push_back('\\'); break;
+					case '"': result.push_back('"'); break;
+					case 'u':
+						if (i + 5 < text.size()) {
+							char charCode[] = { (char)text[i + 2], (char)text[i + 3], (char)text[i + 4], (char)text[i + 5], 0 };
+							result += UTF<C>::FromCodepoint(strtoul(charCode, nullptr, 16));
+							i += 4;
+						}
+					break;
+					default: result.push_back(text[i + 1]);
+				}
+				i++;
+			} else {
+				result.push_back(text[i]);
+			}
+		}
+
+		return result;
+	}
+
+	template <typename C>
 	struct Value : private std::variant<std::monostate, std::nullptr_t, bool, double, std::basic_string<C>, std::vector<Value<C>>, std::unordered_map<std::basic_string<C>, Value<C>>>
 	{
 		using std::variant<std::monostate, std::nullptr_t, bool, double, std::basic_string<C>, std::vector<Value<C>>, std::unordered_map<std::basic_string<C>, Value<C>>>::variant;
 
 		explicit operator bool() const { return index(); }
 		bool IsNull() const { return index() == 1; }
+		bool IsArray() const { return std::holds_alternative<std::vector<Value<C>>>(*this); }
+		bool IsObject() const { return std::holds_alternative<std::unordered_map<std::basic_string<C>, Value<C>>>(*this); }
+		bool IsString() const { return std::holds_alternative<std::basic_string<C>>(*this); }
+
+		size_t Size() const { if (auto array = Array()) return array->size(); return 0; }
+
 		auto Boolean() const { return std::get_if<bool>(this); }
 		auto Number() const { return std::get_if<double>(this); }
 		auto String() const { return std::get_if<std::basic_string<C>>(this); }
