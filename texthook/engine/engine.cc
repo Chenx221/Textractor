@@ -7367,6 +7367,24 @@ bool InsertWaffleHook()
   //ConsoleOutput("vnreng:WAFFLE: failed");
 }
 
+bool TinkerBellRubyFilter(LPVOID data, DWORD *size, HookParam *, BYTE) {
+  LPWSTR text = reinterpret_cast<LPWSTR>(data);
+  size_t len = *size / sizeof(wchar_t);
+  size_t lenPurged = 0;
+
+  for (size_t i = 0; i < len; ++i) {
+    if (i + 5 < len && text[i] == 0xFF && text[i + 1] == 0xFF) {
+      size_t rubyLength = text[i + 2];
+      i+=3+rubyLength;
+    } else {
+      text[lenPurged++] = text[i];
+    }
+  }
+
+  *size = static_cast<DWORD>(lenPurged * sizeof(wchar_t));
+  return true;
+}
+
 bool InsertTinkerBellHook()
 {
   //DWORD s1,s2,i;
@@ -7404,6 +7422,33 @@ bool InsertTinkerBellHook()
   }
   if (count) return true;
   ConsoleOutput("vnreng:TinkerBell: failed");
+
+// By Chenx221
+// Game executables protected by PlayDRM can also work normally.
+// https://vndb.org/v54526
+// https://vndb.org/v51309
+// https://vndb.org/v39838
+  const BYTE bytes1[] = {
+    0xCC,                // int3
+    0x55,                // push ebp // <-- hook, EBX
+    0x8B, 0xEC,          // mov ebp,esp
+    0x83, 0xEC, 0x30,    // sub esp,30
+    0x56                 // push esi
+  };
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  DWORD addr = MemDbg::findBytes(bytes1, sizeof(bytes1), processStartAddress, processStartAddress + range);
+  if (addr) {
+    HookParam hp = {};
+    hp.address = addr + 1;
+    hp.offset = pusha_ebx_off - 4;
+    hp.type = USING_UNICODE | USING_STRING;
+    hp.filter_fun = TinkerBellRubyFilter;
+    ConsoleOutput("Textractor: INSERT TinkerBell");
+    NewHook(hp, "TinkerBell");
+    return true;
+  }
+
   return false;
 }
 
