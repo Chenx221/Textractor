@@ -21373,7 +21373,8 @@ void MonoCallBack(uintptr_t assembly, void* userData) {
     auto mono_tmp_class = mono_class_from_name(image, "TMPro", "TMP_Text");
     auto mono_ugui_class = mono_class_from_name(image, "UnityEngine.UI", "Text");
     auto mono_ngui_class = mono_class_from_name(image, "", "UILabel");
-    if (!mono_tmp_class && !mono_ugui_class && !mono_ngui_class)
+	auto mono_stm_class = mono_class_from_name(image, "", "SuperTextMesh");
+    if (!mono_tmp_class && !mono_ugui_class && !mono_ngui_class && !mono_stm_class)
         return;
     if (mono_tmp_class) {
         mono_property = mono_class_get_property_from_name(mono_tmp_class, "text");
@@ -21381,6 +21382,9 @@ void MonoCallBack(uintptr_t assembly, void* userData) {
     else if(mono_ugui_class)
     {
         mono_property = mono_class_get_property_from_name(mono_ugui_class, "text");
+    }
+    else if (mono_stm_class) {
+        mono_property = mono_class_get_property_from_name(mono_stm_class, "text");
     }
     else if (mono_ngui_class) {
         mono_property = mono_class_get_property_from_name(mono_ngui_class, "text");
@@ -21410,6 +21414,11 @@ void MonoCallBack(uintptr_t assembly, void* userData) {
             ConsoleOutput("Mono_X86,Insert: UGUI_set_text Hook BY:IOV");
             hp.length_fun = getV8StringLength;
             NewHook(hp, "UGUI_set_text");
+        }
+        else if (mono_stm_class)
+        {
+          ConsoleOutput("Mono_X86, Insert: SuperTextMesh_set_text");
+          NewHook(hp, "SuperTextMesh_set_text");
         }
         else if(mono_ngui_class)
         {
