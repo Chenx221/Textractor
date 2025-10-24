@@ -36,7 +36,9 @@ before_build:
   - mkdir %arch%
   - cd %arch%
   - ps: $date=Get-Date -Format 'yyMMdd'; [Environment]::SetEnvironmentVariable('BUILD_DATE', $date, 'Process')
-  - py -3 -m pip install --user aqtinstall
+  - if not "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (
+      py -3 -m pip install --user aqtinstall
+    )
   - if not exist "C:\Qt\5.13.2\%qtbin%" (
       if "%arch%"=="x86" (
         py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 -m qtbase qttools --outputdir C:\Qt\5.13.2\%qtbin%
