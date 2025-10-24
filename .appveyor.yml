@@ -5,65 +5,52 @@ skip_branch_with_pr: false
 
 environment:
   matrix:
-  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-  #   arch: x64
-  #   platform: x64
-  #   qtbin: msvc2017_64
-  #   fprefix: Textractor-vs17
-  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-  #   arch: x86
-  #   platform: Win32
-  #   qtbin: msvc2017
-  #   fprefix: Textractor-vs17
-  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-  #   arch: x64
-  #   platform: x64
-  #   qtbin: msvc2017_64
-  #   fprefix: Textractor
-  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-  #   arch: x86
-  #   platform: Win32
-  #   qtbin: msvc2017
-  #   fprefix: Textractor
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+    fprefix: Textractor-vs17
+    fprefix2: texthook-vs17
+    vs_gen: "Visual Studio 15 2017"
+  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+    fprefix: Textractor
+    fprefix2: texthook
+    vs_gen: "Visual Studio 16 2019"
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-    arch: x64
-    platform: x64
-    qtbin: msvc2017_64
     fprefix: Textractor-vs22
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-    arch: x86
-    platform: Win32
-    qtbin: msvc2017
-    fprefix: Textractor-vs22
+    fprefix2: texthook-vs22
+    vs_gen: "Visual Studio 17 2022"
 
 before_build:
   - git submodule update --init
-  - cd C:\
-  - mkdir %arch%
-  - cd %arch%
   - ps: $date=Get-Date -Format 'yyMMdd'; [Environment]::SetEnvironmentVariable('BUILD_DATE', $date, 'Process')
   - if not "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (
       py -3 -m pip install --user aqtinstall
+      py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt
+      py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 --outputdir C:\Qt
     )
-  - if not exist "C:\Qt\5.13.2\%qtbin%" (
-      if "%arch%"=="x86" (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt
-      ) else (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 --outputdir C:\Qt
-      )
-    )
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" cmake -G "Visual Studio 15 2017" -A %platform% -DQt5_DIR="C:\Qt\5.13.2\%qtbin%\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ../Textractor
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" cmake -G "Visual Studio 16 2019" -A %platform% -DQt5_DIR="C:\Qt\5.13.2\%qtbin%\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ../Textractor
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" cmake -G "Visual Studio 17 2022" -A %platform% -DQt5_DIR="C:\Qt\5.13.2\%qtbin%\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ../Textractor
+  - cd C:\
+  - mkdir x86
+  - cd x86
+  - cmake -G "%vs_gen%" -A Win32 -DQt5_DIR="C:\Qt\5.13.2\msvc2017\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
+  - cmake --build . --config Release -j 1
+  - cd C:\
+  - mkdir x64
+  - cd x64
+  - cmake -G "%vs_gen%" -A x64 -DQt5_DIR="C:\Qt\5.13.2\msvc2017_64\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
+  - cmake --build . --config Release -j 1
 
-build:
-  project: C:\%arch%\Textractor.sln
-  parallel: false
-  verbosity: normal
+build: off
 
 after_build:
-  - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip C:\Textractor\builds\Release_%arch%\*
-  - appveyor PushArtifact Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip
+  - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-x86.zip C:\Textractor\builds\Release_x86\*
+  - appveyor PushArtifact %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-x86.zip
+  - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-x64.zip C:\Textractor\builds\Release_x64\*
+  - appveyor PushArtifact %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-x64.zip
+  - mkdir C:\texthook
+  - mkdir C:\texthook\x86
+  - mkdir C:\texthook\x64
+  - copy C:\Textractor\builds\Release_x86\texthook.dll C:\texthook\x86\texthook.dll
+  - copy C:\Textractor\builds\Release_x64\texthook.dll C:\texthook\x64\texthook.dll
+  - 7z a %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip C:\texthook\*
+  - appveyor PushArtifact %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip
 
 notifications:
 - provider: Email
