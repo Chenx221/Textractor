@@ -22,10 +22,12 @@ before_build:
   - git submodule update --init
   - ps: $date=Get-Date -Format 'yyMMdd'; [Environment]::SetEnvironmentVariable('BUILD_DATE', $date, 'Process')
   - if not "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (
-      py -3 -m pip install --user aqtinstall
-      py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt
+      py -3 -m pip install --user aqtinstall &&
+      py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt &&
       py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 --outputdir C:\Qt
     )
+
+build_script:
   - cd C:\
   - mkdir x86
   - cd x86
@@ -36,8 +38,6 @@ before_build:
   - cd x64
   - cmake -G "%vs_gen%" -A x64 -DQt5_DIR="C:\Qt\5.13.2\msvc2017_64\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
   - cmake --build . --config Release -j 1
-
-build: off
 
 after_build:
   - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-x86.zip C:\Textractor\builds\Release_x86\*
