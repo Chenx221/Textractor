@@ -9,26 +9,32 @@ environment:
   #   arch: x64
   #   platform: x64
   #   qtbin: msvc2017_64
+  #   fprefix: Textractor-vs17
   # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
   #   arch: x86
   #   platform: Win32
   #   qtbin: msvc2017
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    arch: x64
-    platform: x64
-    qtbin: msvc2017_64
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    arch: x86
-    platform: Win32
-    qtbin: msvc2017
+  #   fprefix: Textractor-vs17
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+  #   arch: x64
+  #   platform: x64
+  #   qtbin: msvc2017_64
+  #   fprefix: Textractor
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+  #   arch: x86
+  #   platform: Win32
+  #   qtbin: msvc2017
+  #   fprefix: Textractor
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
     arch: x64
     platform: x64
     qtbin: msvc2017_64
+    fprefix: Textractor-vs22
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
     arch: x86
     platform: Win32
     qtbin: msvc2017
+    fprefix: Textractor-vs22
 
 before_build:
   - git submodule update --init
@@ -56,7 +62,7 @@ build:
   verbosity: normal
 
 after_build:
-  - 7z a Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip C:\Textractor\builds\Release_%arch%\*
+  - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip C:\Textractor\builds\Release_%arch%\*
   - appveyor PushArtifact Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip
 
 notifications:
