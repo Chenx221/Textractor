@@ -41,9 +41,9 @@ before_build:
     )
   - if not exist "C:\Qt\5.13.2\%qtbin%" (
       if "%arch%"=="x86" (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 -m qtbase qttools --outputdir C:\Qt\5.13.2\%qtbin%
-      ) else if "%arch%"=="x86" (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 -m qtbase qttools --outputdir C:\Qt\5.13.2\%qtbin%
+        py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 -m qtbase qttools --outputdir C:\Qt
+      ) else (
+        py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 -m qtbase qttools --outputdir C:\Qt
       )
     )
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" cmake -G "Visual Studio 15 2017" -A %platform% -DQt5_DIR="C:\Qt\5.13.2\%qtbin%\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ../Textractor
@@ -56,7 +56,7 @@ build:
   verbosity: normal
 
 after_build:
-  - 7z a Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip C:\%arch%\Release\*
+  - 7z a Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip C:\Textractor\builds\Release_%arch%\*
   - appveyor PushArtifact Textractor-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%-%arch%.zip
 
 notifications:
