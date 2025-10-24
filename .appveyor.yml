@@ -3,6 +3,8 @@ configuration: Release
 clone_folder: C:\Textractor
 skip_branch_with_pr: false
 
+build: Script
+
 environment:
   matrix:
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
