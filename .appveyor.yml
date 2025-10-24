@@ -5,14 +5,14 @@ skip_branch_with_pr: false
 
 environment:
   matrix:
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    arch: x64
-    platform: x64
-    qtbin: msvc2017_64
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
-    arch: x86
-    platform: Win32
-    qtbin: msvc2017
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+  #   arch: x64
+  #   platform: x64
+  #   qtbin: msvc2017_64
+  # - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+  #   arch: x86
+  #   platform: Win32
+  #   qtbin: msvc2017
   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     arch: x64
     platform: x64
@@ -41,9 +41,9 @@ before_build:
     )
   - if not exist "C:\Qt\5.13.2\%qtbin%" (
       if "%arch%"=="x86" (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 -m qtbase qttools --outputdir C:\Qt
+        py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt
       ) else (
-        py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 -m qtbase qttools --outputdir C:\Qt
+        py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 --outputdir C:\Qt
       )
     )
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" cmake -G "Visual Studio 15 2017" -A %platform% -DQt5_DIR="C:\Qt\5.13.2\%qtbin%\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ../Textractor
