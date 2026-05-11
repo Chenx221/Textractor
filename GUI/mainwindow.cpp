@@ -17,6 +17,8 @@
 #include <QFileDialog>
 #include <QFontDialog>
 #include <QHash>
+#include <QStyle>
+#include <QTimer>
 #include "../extensions/network.h"
 #include <algorithm>
 
@@ -137,8 +139,33 @@ namespace
 	wchar_t savedThreadCode[1000] = {};
 	TextThread* current = nullptr;
 	MainWindow* This = nullptr;
+	bool refreshingThemeStyle = false;
 
 	void FindHooks();
+
+	void RefreshThemeStyle()
+	{
+		if (!This || refreshingThemeStyle) return;
+		refreshingThemeStyle = true;
+
+		// Force QSS-based controls to rebuild after system palette/theme switches.
+		const QString styleSheet = This->styleSheet();
+		This->setStyleSheet(QString());
+		This->setStyleSheet(styleSheet);
+
+		for (QWidget* widget : This->findChildren<QWidget*>())
+		{
+			if (QStyle* style = widget->style())
+			{
+				style->unpolish(widget);
+				style->polish(widget);
+			}
+			widget->update();
+		}
+
+		This->update();
+		refreshingThemeStyle = false;
+	}
 
 	bool IsRunningAsAdmin()
 	{
@@ -897,6 +924,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 	connect(ui.ttCombo, qOverload<int>(&QComboBox::activated), this, ViewThread);
 	connect(ui.textOutput, &QPlainTextEdit::selectionChanged, this, CopyUnlessMouseDown);
 	connect(ui.textOutput, &QPlainTextEdit::customContextMenuRequested, this, OutputContextMenu);
+	connect(qApp, &QGuiApplication::paletteChanged, this, [](const QPalette&)
+	{
+		QTimer::singleShot(0, [] { RefreshThemeStyle(); });
+	});
 
 	if (settings.contains(WINDOW) && QApplication::screenAt(settings.value(WINDOW).toRect().center())) setGeometry(settings.value(WINDOW).toRect());
 	SetOutputFont(settings.value(KEY_FONT, ui.textOutput->font().toString()).toString());
@@ -945,3 +976,20 @@ void MainWindow::closeEvent(QCloseEvent*)
 {
 	QApplication::quit(); // Need to do this to kill any windows that might've been made by extensions
 }
+
+void MainWindow::changeEvent(QEvent* event)
+{
+	QMainWindow::changeEvent(event);
+
+	switch (event->type())
+	{
+	case QEvent::ApplicationPaletteChange:
+	case QEvent::PaletteChange:
+	case QEvent::ThemeChange:
+		QTimer::singleShot(0, [] { RefreshThemeStyle(); });
+		break;
+	default:
+		break;
+	}
+}
+

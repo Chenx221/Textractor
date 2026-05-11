@@ -17,6 +17,8 @@
    <string notr="true">
        QPushButton, QComboBox
        {
+       color: palette(text);
+       background-color: palette(button);
        padding-top: 3px;
        padding-bottom: 3px;
        padding-right: 5px;
