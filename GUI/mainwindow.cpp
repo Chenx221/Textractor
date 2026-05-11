@@ -18,6 +18,7 @@
 #include <QFontDialog>
 #include <QHash>
 #include "../extensions/network.h"
+#include <algorithm>
 
 extern const char* ATTACH;
 extern const char* LAUNCH;
@@ -184,7 +185,7 @@ namespace
 
 	ThreadParam ParseTextThreadString(QString ttString)
 	{
-		auto threadParam = ttString.splitRef(":");
+		auto threadParam = ttString.split(":");
 		return { threadParam[1].toUInt(nullptr, 16), threadParam[2].toULongLong(nullptr, 16), threadParam[3].toULongLong(nullptr, 16), threadParam[4].toULongLong(nullptr, 16) };
 	}
 
@@ -223,10 +224,10 @@ namespace
 	{
 		std::unordered_set<std::wstring> attachTargets;
 		if (autoAttach)
-			for (auto process : QString(QTextFile(GAME_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", QString::SkipEmptyParts))
+			for (auto process : QString(QTextFile(GAME_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", Qt::SkipEmptyParts))
 				attachTargets.insert(S(process));
 		if (autoAttachSavedOnly)
-			for (auto process : QString(QTextFile(HOOK_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", QString::SkipEmptyParts))
+			for (auto process : QString(QTextFile(HOOK_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", Qt::SkipEmptyParts))
 				attachTargets.insert(S(process.split(" , ")[0]));
 
 		if (!attachTargets.empty())
@@ -236,10 +237,17 @@ namespace
 
 	std::optional<std::wstring> UserSelectedProcess()
 	{
-		QStringList savedProcesses = QString::fromUtf8(QTextFile(GAME_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", QString::SkipEmptyParts);
+		QStringList savedProcesses = QString::fromUtf8(QTextFile(GAME_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", Qt::SkipEmptyParts);
 		std::reverse(savedProcesses.begin(), savedProcesses.end());
 		savedProcesses.removeDuplicates();
-		savedProcesses.insert(1, FROM_COMPUTER);
+		if (savedProcesses.isEmpty()) {
+			savedProcesses.append(FROM_COMPUTER);
+		} else {
+			if (savedProcesses.size() >= 1)
+				savedProcesses.insert(1, FROM_COMPUTER);
+			else
+				savedProcesses.append(FROM_COMPUTER);
+		}
 		QString process = QInputDialog::getItem(This, SELECT_PROCESS, SELECT_PROCESS_INFO, savedProcesses, 0, true, &ok, Qt::WindowCloseButtonHint);
 		if (process == FROM_COMPUTER) process = QDir::toNativeSeparators(QFileDialog::getOpenFileName(This, SELECT_PROCESS, "/", PROCESSES));
 		if (ok && process.contains('\\')) return S(process);
@@ -358,7 +366,7 @@ namespace
 		if (!processName) return;
 		for (auto file : { GAME_SAVE_FILE, HOOK_SAVE_FILE })
 		{
-			QStringList lines = QString::fromUtf8(QTextFile(file, QIODevice::ReadOnly).readAll()).split("\n", QString::SkipEmptyParts);
+			QStringList lines = QString::fromUtf8(QTextFile(file, QIODevice::ReadOnly).readAll()).split("\n", Qt::SkipEmptyParts);
 			lines.erase(std::remove_if(lines.begin(), lines.end(), [&](const QString& line) { return line.contains(S(processName.value())); }), lines.end());
 			QTextFile(file, QIODevice::WriteOnly | QIODevice::Truncate).write(lines.join("\n").append("\n").toUtf8());
 		}
@@ -522,7 +530,7 @@ namespace
 			else
 			{
 				QByteArray pattern = QByteArray::fromHex(patternEdit.text().replace("??", QString::number(XX, 16)).toUtf8());
-				memcpy(sp.pattern, pattern.data(), sp.length = min(pattern.size(), PATTERN_SIZE));
+				memcpy(sp.pattern, pattern.data(), sp.length = (std::min)(static_cast<int>(pattern.size()), static_cast<int>(PATTERN_SIZE)));
 			}
 			wcsncpy_s(sp.boundaryModule, S(boundEdit.text()).c_str(), MAX_MODULE_SIZE - 1);
 			filter.setPattern(filterEdit.text());
@@ -668,7 +676,7 @@ namespace
 		// This does add (potentially tons of) duplicates to the file, but as long as I don't perform Ω(N^2) operations it shouldn't be an issue
 		QTextFile(GAME_SAVE_FILE, QIODevice::WriteOnly | QIODevice::Append).write((process + "\n").toUtf8());
 
-		QStringList allProcesses = QString(QTextFile(HOOK_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", QString::SkipEmptyParts);
+		QStringList allProcesses = QString(QTextFile(HOOK_SAVE_FILE, QIODevice::ReadOnly).readAll()).split("\n", Qt::SkipEmptyParts);
 		auto hookList = std::find_if(allProcesses.rbegin(), allProcesses.rend(), [&](QString hookList) { return hookList.contains(process); });
 		if (hookList != allProcesses.rend())
 			for (auto hookInfo : hookList->split(" , "))

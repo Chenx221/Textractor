@@ -3,7 +3,7 @@
 
 namespace
 {
-	char* GetCppExceptionInfo(EXCEPTION_POINTERS* exception)
+	const char* GetCppExceptionInfo(EXCEPTION_POINTERS* exception)
 	{
 		// https://blogs.msdn.microsoft.com/oldnewthing/20100730-00/?p=13273
 		// Not very reliable so use __try
@@ -44,7 +44,7 @@ namespace
 
 		if (exception->ExceptionRecord->ExceptionCode == 0xE06D7363)
 		{
-			if (char* info = GetCppExceptionInfo(exception)) errorMsg << L"Additional info: " << info << std::endl;
+			if (const char* info = GetCppExceptionInfo(exception)) errorMsg << L"Additional info: " << info << std::endl;
 			if (const char* info = GetCppExceptionMessage(exception)) errorMsg << L"Additional info: " << info << std::endl;
 		}
 

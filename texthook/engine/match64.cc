@@ -403,17 +403,17 @@ namespace Engine
 	// const char* mono_image_get_name(MonoImage * image) :获取程序集名。我们用它判断哪个程序集是我们的目标
 	static char* (*mono_image_get_name)(uintptr_t) = NULL;
 	//MonoClass* mono_class_from_name (MonoImage *image, const char* name_space, const char *name):通过类名获取类(非实例)。
-	static uintptr_t(*mono_class_from_name)(uintptr_t, char*, char*) = NULL;
+	static uintptr_t(*mono_class_from_name)(uintptr_t,const char*,const char*) = NULL;
 	//MonoVTable* mono_class_vtable (MonoDomain *domain, MonoClass *klass)：获取vtable，我们通过它可以找到静态字段的起始地址。
 	static uintptr_t(*mono_class_vtable)(uintptr_t, uintptr_t) = NULL;
 	//void* mono_vtable_get_static_field_data (MonoVTable *vt)：获取静态字段的起始地址。
 	static void*  (*mono_vtable_get_static_field_data)(uintptr_t) = NULL;
 	//MonoMethod* mono_class_get_method_from_name (MonoClass *klass, const char *name, int param_count):获取方法(非native code地址)。
 	//其中param_count是参数数量，可以输入-1来省略。此函数无法获取重载的方法，但对于我们来说足够了。
-	static uintptr_t(*mono_class_get_method_from_name)(uintptr_t, char*,int) = NULL;
+	static uintptr_t(*mono_class_get_method_from_name)(uintptr_t,const char*,int) = NULL;
 	//获取属性。用它可以进一步获得属性的getter和setter。
 	//MonoProperty* mono_class_get_property_from_name(MonoClass* klass, const char* name)：
-	static uintptr_t(*mono_class_get_property_from_name)(uintptr_t, char*) = NULL;
+	static uintptr_t(*mono_class_get_property_from_name)(uintptr_t,const char*) = NULL;
 	//获取属性的getter和setter。
 	//MonoMethod* mono_property_get_get_method(MonoProperty* prop) 与 MonoMethod* mono_property_get_set_method(MonoProperty* prop)：
 	static uintptr_t(*mono_property_get_set_method)(uintptr_t) = NULL;
@@ -636,9 +636,9 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		static auto mono_assembly_foreach = (void (*)(void (*)(uintptr_t, void*), uintptr_t))GetProcAddress(module, "mono_assembly_foreach");
 		mono_assembly_get_image= (uintptr_t(*)(uintptr_t))GetProcAddress(module, "mono_assembly_get_image");
 		mono_image_get_name = (char* (*)(uintptr_t))GetProcAddress(module, "mono_image_get_name");
-		mono_class_from_name = (uintptr_t(*)(uintptr_t, char*, char*))GetProcAddress(module, "mono_class_from_name");
-		mono_class_get_property_from_name = (uintptr_t(*)(uintptr_t, char*))GetProcAddress(module, "mono_class_get_property_from_name");
-		mono_class_get_method_from_name = (uintptr_t(*)(uintptr_t, char*, int))GetProcAddress(module, "mono_class_get_method_from_name");
+		mono_class_from_name = (uintptr_t(*)(uintptr_t,const char*,const char*))GetProcAddress(module, "mono_class_from_name");
+		mono_class_get_property_from_name = (uintptr_t(*)(uintptr_t,const char*))GetProcAddress(module, "mono_class_get_property_from_name");
+		mono_class_get_method_from_name = (uintptr_t(*)(uintptr_t,const char*, int))GetProcAddress(module, "mono_class_get_method_from_name");
 		mono_property_get_set_method = (uintptr_t(*)(uintptr_t))GetProcAddress(module, "mono_property_get_set_method");
 		mono_compile_method = (uint64_t * (*)(uintptr_t))GetProcAddress(module, "mono_compile_method");
 		//mono_method_get_unmanaged_thunk= (uint64_t * (*)(uintptr_t))GetProcAddress(module, "mono_method_get_unmanaged_thunk");
@@ -682,9 +682,15 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			static auto getDomain = (MonoDomain * (*)())GetProcAddress(mono, "mono_domain_get");
 			static auto getJitInfo = (MonoObject * (*)(MonoDomain*, uintptr_t))GetProcAddress(mono, "mono_jit_info_table_find");
 			static auto getName = (char* (*)(uintptr_t))GetProcAddress(mono, "mono_pmip");
-			if (!getDomain || !getName || !getJitInfo) goto failed;
+			if (!getDomain || !getName || !getJitInfo) {
+				ConsoleOutput("Textractor: Mono Dynamic failed");
+				return true;
+			}
 			static auto domain = getDomain();
-			if (!domain) goto failed;
+			if (!domain) {
+				ConsoleOutput("Textractor: Mono Dynamic failed");
+				return true;
+			}
 			ConsoleOutput("Textractor: Mono Dynamic ENTER (hooks = %s)", *loadedConfig ? loadedConfig : "brute force");
 			const BYTE prolog1[] = { 0x55, 0x48, 0x8b, 0xec };
 			const BYTE prolog2[] = { 0x48, 0x83, 0xec };

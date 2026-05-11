@@ -21681,11 +21681,11 @@ bool InsertRenpyHook()
 
 	static uintptr_t(*mono_assembly_get_image)(uintptr_t) = NULL;
 static char* (*mono_image_get_name)(uintptr_t) = NULL;
-static uintptr_t(*mono_class_from_name)(uintptr_t, char*, char*) = NULL;
+static uintptr_t(*mono_class_from_name)(uintptr_t,const char*,const char*) = NULL;
 static uintptr_t(*mono_class_vtable)(uintptr_t, uintptr_t) = NULL;
 static void* (*mono_vtable_get_static_field_data)(uintptr_t) = NULL;
 static uintptr_t(*mono_class_get_method_from_name)(uintptr_t, char*, int) = NULL;
-static uintptr_t(*mono_class_get_property_from_name)(uintptr_t, char*) = NULL;
+static uintptr_t(*mono_class_get_property_from_name)(uintptr_t,const char*) = NULL;
 static uintptr_t(*mono_property_get_set_method)(uintptr_t) = NULL;
 static  uint64_t* (*mono_compile_method)(uintptr_t) = NULL;
 static  MonoDomain* (*mono_get_root_domain)() = NULL;
@@ -21761,8 +21761,8 @@ bool InsertMonoHooksByAssembly(HMODULE module) {
     static auto mono_assembly_foreach = (void (*)(void (*)(uintptr_t, void*), uintptr_t))GetProcAddress(module, "mono_assembly_foreach");
     mono_assembly_get_image = (uintptr_t(*)(uintptr_t))GetProcAddress(module, "mono_assembly_get_image");
     mono_image_get_name = (char* (*)(uintptr_t))GetProcAddress(module, "mono_image_get_name");
-    mono_class_from_name = (uintptr_t(*)(uintptr_t, char*, char*))GetProcAddress(module, "mono_class_from_name");
-    mono_class_get_property_from_name = (uintptr_t(*)(uintptr_t, char*))GetProcAddress(module, "mono_class_get_property_from_name");
+    mono_class_from_name = (uintptr_t(*)(uintptr_t,const char*,const char*))GetProcAddress(module, "mono_class_from_name");
+    mono_class_get_property_from_name = (uintptr_t(*)(uintptr_t,const char*))GetProcAddress(module, "mono_class_get_property_from_name");
     mono_property_get_set_method = (uintptr_t(*)(uintptr_t))GetProcAddress(module, "mono_property_get_set_method");
     mono_compile_method = (uint64_t * (*)(uintptr_t))GetProcAddress(module, "mono_compile_method");
     mono_get_root_domain = (MonoDomain * (*)())GetProcAddress(module, "mono_get_root_domain");
@@ -21802,9 +21802,15 @@ void InsertMonoHook(HMODULE h)
 		static auto getDomain = (MonoDomain*(*)())GetProcAddress(mono, "mono_domain_get");
 		static auto getJitInfo = (MonoObject*(*)(MonoDomain*, uintptr_t))GetProcAddress(mono, "mono_jit_info_table_find");
 		static auto getName = (char*(*)(uintptr_t))GetProcAddress(mono, "mono_pmip");
-		if (!getDomain || !getName || !getJitInfo) goto failed;
+	  if (!getDomain || !getName || !getJitInfo) {
+	    ConsoleOutput("Textractor: Mono Dynamic failed");
+	    return true;
+	  }
 		static auto domain = getDomain();
-		if (!domain) goto failed;
+	  if (!domain) {
+	    ConsoleOutput("Textractor: Mono Dynamic failed");
+	    return true;
+	  }
         ConsoleOutput("Textractor: Mono Dynamic ENTER (hooks = %s)", *loadedConfig ? loadedConfig : "brute force");
 		const BYTE prolog[] = { 0x55, 0x8b, 0xec };
 		for (auto addr : Util::SearchMemory(prolog, sizeof(prolog), PAGE_EXECUTE_READWRITE))

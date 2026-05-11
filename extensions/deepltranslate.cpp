@@ -160,7 +160,9 @@ std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationPar
 
 
 	// the following code was reverse engineered from the DeepL website; it's as close as I could make it but I'm not sure what parts of this could be removed and still have it work
-	int id = 10000 * std::uniform_int_distribution(0, 9999)(std::random_device()) + 1;
+	static std::mt19937 gen(std::random_device{}());
+	std::uniform_int_distribution<> dist(0, 9999);
+	int id = 10000 * dist(gen) + 1;
 	int64_t r = _time64(nullptr), n = std::count(text.begin(), text.end(), L'i') + 1;
 	// user_preferred_langs? what should priority be? does timestamp do anything? other translation quality options?
 	auto body = FormatString(R"(

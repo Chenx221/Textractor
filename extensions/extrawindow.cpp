@@ -70,10 +70,10 @@ const qreal COLOR_ALFAF_HIDE_WINDOW = 0.05;
 const int TEXT_TIMEOUT_DEF = 0;
 const int TEXT_TIMEOUT_ADD_PER_CHAR_DEF = 0;
 
-QColor colorPrompt(QWidget* parent, QColor default, const QString& title, bool customOpacity = true)
+QColor colorPrompt(QWidget* parent, QColor defaultColor, const QString& title, bool customOpacity = true)
 {
-	QColor color = QColorDialog::getColor(default, parent, title);
-	if (customOpacity) color.setAlpha(255 * QInputDialog::getDouble(parent, title, OPACITY, default.alpha() / 255.0, 0, 1, 3, nullptr, Qt::WindowCloseButtonHint));
+	QColor color = QColorDialog::getColor(defaultColor, parent, title);
+	if (customOpacity) color.setAlpha(255 * QInputDialog::getDouble(parent, title, OPACITY, defaultColor.alpha() / 255.0, 0, 1, 3, nullptr, Qt::WindowCloseButtonHint));
 	return color;
 }
 
@@ -293,22 +293,22 @@ public:
 		ui.display->setTextFormat(Qt::PlainText);
 		if (settings.contains(WINDOW) && QApplication::screenAt(settings.value(WINDOW).toRect().bottomRight())) setGeometry(settings.value(WINDOW).toRect());
 
-		for (auto [name,keyname, default, slot] : Array<const char*, const char*, bool, void(ExtraWindow::*)(bool)>{
-			{ TOPMOST, KEY_TOPMOST, false, &ExtraWindow::SetTopmost },
-			{ SIZE_LOCK, KEY_SIZE_LOCK, false, &ExtraWindow::SetSizeLock },
-			{ POSITION_LOCK, KEY_POSITION_LOCK, false, &ExtraWindow::SetPositionLock },
-			{ CENTERED_TEXT, KEY_CENTERED_TEXT, false, &ExtraWindow::SetCenteredText },
-			{ AUTO_RESIZE_WINDOW_HEIGHT, KEY_AUTO_RESIZE_WINDOW_HEIGHT, false, &ExtraWindow::SetAutoResize },
-			{ SHOW_ORIGINAL, KEY_SHOW_ORIGINAL, true, &ExtraWindow::SetShowOriginal },
-			{ ORIGINAL_AFTER_TRANSLATION, KEY_ORIGINAL_AFTER_TRANSLATION, true, &ExtraWindow::SetShowOriginalAfterTranslation },
-			{ DICTIONARY, KEY_DICTIONARY, false, &ExtraWindow::SetUseDictionary },
+		for (auto [name, keyname, defVal, slot] : {
+			std::make_tuple(TOPMOST, KEY_TOPMOST, false, &ExtraWindow::SetTopmost),
+			std::make_tuple(SIZE_LOCK, KEY_SIZE_LOCK, false, &ExtraWindow::SetSizeLock),
+			std::make_tuple(POSITION_LOCK, KEY_POSITION_LOCK, false, &ExtraWindow::SetPositionLock),
+			std::make_tuple(CENTERED_TEXT, KEY_CENTERED_TEXT, false, &ExtraWindow::SetCenteredText),
+			std::make_tuple(AUTO_RESIZE_WINDOW_HEIGHT, KEY_AUTO_RESIZE_WINDOW_HEIGHT, false, &ExtraWindow::SetAutoResize),
+			std::make_tuple(SHOW_ORIGINAL, KEY_SHOW_ORIGINAL, true, &ExtraWindow::SetShowOriginal),
+			std::make_tuple(ORIGINAL_AFTER_TRANSLATION, KEY_ORIGINAL_AFTER_TRANSLATION, true, &ExtraWindow::SetShowOriginalAfterTranslation),
+			std::make_tuple(DICTIONARY, KEY_DICTIONARY, false, &ExtraWindow::SetUseDictionary),
 		})
 		{
-			// delay processing anything until Textractor has finished initializing
-			QMetaObject::invokeMethod(this, std::bind(slot, this, default = settings.value(keyname, default).toBool()), Qt::QueuedConnection);
+			bool actualValue = settings.value(keyname, defVal).toBool();
+			QMetaObject::invokeMethod(this, std::bind(slot, this, actualValue), Qt::QueuedConnection);
 			auto action = menu.addAction(name, this, slot);
 			action->setCheckable(true);
-			action->setChecked(default);
+			action->setChecked(actualValue);
 		}
 
 		hideTextAction = menu.addAction(HIDE_TEXT, this, &ExtraWindow::ToggleHideText);
@@ -499,7 +499,7 @@ private:
 		dictionaryWindow.move(ui.display->mapToGlobal(QPoint(x, y - dictionaryWindow.height())));
 	}
 
-	bool nativeEventFilter(const QByteArray&, void* message, long* result) override
+	bool nativeEventFilter(const QByteArray&, void* message, qintptr* result) override
 	{
 		auto msg = (MSG*)message;
 		if (msg->message == WM_HOTKEY)

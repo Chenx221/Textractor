@@ -13,6 +13,8 @@ add_compile_options(
   /MP
   /wd4018 # signed/unsigned mismatch
   /utf-8
+  /permissive-
+  /Zc:__cplusplus
   /DVERSION="${VERSION}"
   /DUNICODE # config.pri
   /D_UNICODE
@@ -46,7 +48,7 @@ file(COPY ${ASSETS} DESTINATION ${CMAKE_FINAL_OUTPUT_DIRECTORY})
 
 include(QtUtils)
 msvc_registry_search()
-find_qt5(Core Widgets WinExtras WebSockets)
+find_qt6(Core Widgets WebSockets Core5Compat)
 
 add_library(text text.cpp)
 target_compile_definitions(text PRIVATE ${TEXT_LANGUAGE})

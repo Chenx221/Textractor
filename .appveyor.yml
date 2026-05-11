@@ -6,39 +6,35 @@ skip_branch_with_pr: false
 build: Script
 
 environment:
-  matrix:
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    fprefix: Textractor
-    fprefix2: texthook
-    vs_gen: "Visual Studio 16 2019"
-  - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
-    fprefix: Textractor-vs22
-    fprefix2: texthook-vs22
-    vs_gen: "Visual Studio 17 2022"
+  fprefix: Textractor-Qt6
+  fprefix2: texthook-Qt6
+  vs_gen: "Visual Studio 17 2022"
+  APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
 
 before_build:
   - git submodule update --init
   - ps: $date=Get-Date -Format 'yyMMdd'; [Environment]::SetEnvironmentVariable('BUILD_DATE', $date, 'Process')
-  - if not "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (
-      py -3 -m pip install --user aqtinstall &&
-      py -3 -m aqt install-qt windows desktop 5.13.2 win32_msvc2017 --outputdir C:\Qt &&
-      py -3 -m aqt install-qt windows desktop 5.13.2 win64_msvc2017_64 --outputdir C:\Qt
-    )
-  - copy C:\Textractor\languages\qtbase_zh_CN.qm C:\Qt\5.13.2\msvc2017\translations\qtbase_zh_CN.qm
-  - copy C:\Textractor\languages\qtbase_zh_CN.qm C:\Qt\5.13.2\msvc2017_64\translations\qtbase_zh_CN.qm
-  - copy C:\Textractor\languages\qtbase_pt_BR.qm C:\Qt\5.13.2\msvc2017\translations\qtbase_pt_BR.qm
-  - copy C:\Textractor\languages\qtbase_pt_BR.qm C:\Qt\5.13.2\msvc2017_64\translations\qtbase_pt_BR.qm
-  - copy C:\Textractor\languages\qtbase_tr.qm C:\Qt\5.13.2\msvc2017\translations\qtbase_tr.qm
-  - copy C:\Textractor\languages\qtbase_tr.qm C:\Qt\5.13.2\msvc2017_64\translations\qtbase_tr.qm
+  - py -3 -m pip install --user aqtinstall
+  - py -3 -m aqt install-qt windows desktop 6.10.3 win64_msvc2022_64 --outputdir C:\Qt -m qt5compat qtwebsockets
+  - ps: |
+      $url = "https://dl.iloli.one/qt6/Qt_6.10.3_msvc22_32bit.7z"
+      $sha256 = "5865677338b54fb59707afb44393c0a105010c0e32af9dc6c00531714b6da294"
+      $output = "C:\Qt\Qt_6.10.3_msvc22_32bit.7z"
+      Write-Host "Downloading custom Qt 32bit build..."
+      (New-Object Net.WebClient).DownloadFile($url, $output)
+      if ((Get-FileHash $output -Algorithm SHA256).Hash -ne $sha256) { throw "Hash mismatch!" }
+      Write-Host "Extracting..."
+      7z x $output -oC:\Qt\6.10.3\
 
 build_script:
   - cd C:\
   - mkdir x86 && mkdir x64
-  - cd x86
-  - cmake -G "%vs_gen%" -A Win32 -DQt5_DIR="C:\Qt\5.13.2\msvc2017\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
+
+  - cd C:\x86
+  - cmake -G "%vs_gen%" -A Win32 -DQt6_DIR="C:\Qt\6.10.3\msvc2022\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
   - cmake --build . --config Release -j 1
   - cd C:\x64
-  - cmake -G "%vs_gen%" -A x64 -DQt5_DIR="C:\Qt\5.13.2\msvc2017_64\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
+  - cmake -G "%vs_gen%" -A x64 -DQt6_DIR="C:\Qt\6.10.3\msvc2022_64\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
   - cmake --build . --config Release -j 1
 
 after_build:

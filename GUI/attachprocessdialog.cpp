@@ -1,5 +1,8 @@
 #include "attachprocessdialog.h"
-#include <QtWinExtras/QtWin>
+// #include <QtWinExtras/QtWin>
+#include <QtGui/QGuiApplication>
+#include <QtGui/QImage>
+#include <QtGui/QPixmap>
 
 extern const char* SELECT_PROCESS;
 extern const char* ATTACH_INFO;
@@ -15,7 +18,7 @@ ProcessInfo::ProcessInfo(DWORD pid, QString name, QString title, bool is64, HICO
 	, is64Bit(is64)
 {
 	if (ic) {
-		icon = QIcon(QtWin::fromHICON(ic));
+		icon = QIcon(QPixmap::fromImage(QImage::fromHICON(ic)));
 		DestroyIcon(ic);
 	} else {
 		QPixmap transparent(16, 16);

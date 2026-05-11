@@ -168,9 +168,9 @@ void TextHook::Send(uintptr_t dwDataBase)
 		int count = 0;
 		ThreadParam tp = { GetCurrentProcessId(), address, *(uintptr_t*)dwDataBase, 0 }; // first value on stack (if hooked start of function, this is return address)
 		uintptr_t data = *(uintptr_t*)(dwDataBase + hp.offset); // default value
-
+		DWORD dwCountForHook = static_cast<DWORD>(count);
 		if (hp.text_fun) {
-			hp.text_fun(dwDataBase, &hp, 0, &data, &tp.ctx2, &static_cast<DWORD>(count));
+			hp.text_fun(dwDataBase, &hp, 0, &data, &tp.ctx2, &dwCountForHook);
 		}
 		else {
 			if (hp.type & USING_SPLIT)
@@ -182,6 +182,7 @@ void TextHook::Send(uintptr_t dwDataBase)
 
 			data += hp.padding;
 			count = GetLength(dwDataBase, data);
+			dwCountForHook = static_cast<DWORD>(count);
 		}
 
 		if (count <= 0) goto done;
@@ -195,8 +196,8 @@ void TextHook::Send(uintptr_t dwDataBase)
 		}
 		else ::memcpy(pbData, (void*)data, count);
 
-		if (hp.filter_fun && !hp.filter_fun(pbData, &static_cast<DWORD>(count), &hp, 0) || count <= 0) goto done;
-
+		if (hp.filter_fun && !hp.filter_fun(pbData, &dwCountForHook, &hp, 0) || dwCountForHook <= 0) goto done;
+		count = static_cast<int>(dwCountForHook);
 		if (hp.type & (NO_CONTEXT | FIXING_SPLIT)) tp.ctx = 0;
 
 		TextOutput(tp, buffer, count);

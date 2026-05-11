@@ -1,5 +1,5 @@
 #pragma once
-
+#include <algorithm>
 #include <istream>
 
 template <typename C, int delimiterCount, int blockSize = 0x1000 / sizeof(C)> // windows file block size
@@ -39,7 +39,7 @@ private:
 			int oldSize = buffer.size();
 			buffer.resize(oldSize + blockSize);
 			if (!streambuf.sgetn((char*)(buffer.data() + oldSize), blockSize * sizeof(C))) return {};
-			i = max(0, oldSize - (int)delimiter.size());
+			i = (std::max)(0, oldSize - (int)delimiter.size());
 			if (discard)
 			{
 				buffer.erase(0, i);
