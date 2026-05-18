@@ -11,6 +11,10 @@ add_executable(Textractor WIN32
 target_precompile_headers(Textractor REUSE_FROM pch)
 target_link_libraries(Textractor host Qt6::Widgets Qt6::Gui shell32 winhttp)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+	set_target_properties(Textractor PROPERTIES LINK_FLAGS "/LARGEADDRESSAWARE")
+endif()
+
 if (NOT EXISTS ${CMAKE_FINAL_OUTPUT_DIRECTORY}/Qt6Core.dll AND NOT EXISTS ${CMAKE_FINAL_OUTPUT_DIRECTORY}/Qt6Cored.dll)
 	set(QT_BIN_DIR "${qt6_install_prefix}/bin")
 	add_custom_command(TARGET Textractor
