@@ -30,9 +30,12 @@ build_script:
   - cd C:\
   - mkdir x86 && mkdir x64
 
+  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars32.bat"
   - cd C:\x86
   - cmake -G "%vs_gen%" -A Win32 -DQt6_DIR="C:\Qt\6.10.3\msvc2022\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
   - cmake --build . --config Release -j 1
+
+  - call "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
   - cd C:\x64
   - cmake -G "%vs_gen%" -A x64 -DQt6_DIR="C:\Qt\6.10.3\msvc2022_64\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE="Release" -DVERSION="" ..\Textractor
   - cmake --build . --config Release -j 1
