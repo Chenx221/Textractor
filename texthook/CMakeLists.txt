@@ -26,6 +26,7 @@ if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 		engine/match.cc
 		engine/match64.cc
 		engine/native/pchooks.cc
+		engine/clr/clrhelper.cpp
 		util/ithsys/ithsys.cc
 		util/util.cc
 	)

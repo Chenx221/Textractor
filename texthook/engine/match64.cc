@@ -6,6 +6,7 @@
 #include "mono/funcinfo.h"
 #include "engine.h"
 #include "util.h"
+#include "clr/clrhelper.h"
 #include "cpputil/cppcstring.h"
 
 // Warning: The offset in ITH has -4 offset comparing to pusha and AGTH
@@ -2403,6 +2404,72 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		return gFlag;
 	}
 
+	bool InsertBakinPlayerHook() {
+		ConsoleOutput("Textractor: Initializing BakinPlayer .NET hook");
+
+		wchar_t modulePath[MAX_PATH];
+		GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
+		std::wstring helperPath = modulePath;
+		size_t pos = helperPath.find_last_of(L"\\/");
+		if (pos != std::wstring::npos) {
+			helperPath = helperPath.substr(0, pos + 1);
+		}
+		helperPath += L"CLRHelper.dll";
+		if (!CLRHelper::ExtractHelperAssembly(helperPath.c_str())) {
+			return false;
+		}
+
+		bool flag = false;
+
+		void* methodAddress = nullptr;
+
+		bool success = CLRHelper::GetDotNetMethodAddress(
+		   L"bakinengine",
+		   L"Yukar.Engine.LayoutMenuController",
+		   L"ShowMessage",
+		   4,
+		   &methodAddress
+		);
+
+		if (!success || !methodAddress) {
+			ConsoleOutput("Textractor: Failed to get BakinPlayer ShowMessage method address");
+		} else {
+			ConsoleOutput("Textractor: Found ShowMessage method at address: 0x%p", methodAddress);
+			HookParam hp = {};
+			hp.address = reinterpret_cast<uint64_t>(methodAddress);
+			hp.offset = pusha_rdx_off - 4;
+			hp.type = USING_STRING | USING_UNICODE;
+			hp.padding = 0xC;
+			ConsoleOutput("Textractor: INSERT BakinPlayer_ShowMessage Hook");
+			NewHook(hp, "BakinPlayer ShowMessage");
+			flag = true;
+		}
+
+		methodAddress = nullptr;
+		success = CLRHelper::GetDotNetMethodAddress(
+		   L"bakinengine",
+		   L"Yukar.Engine.LayoutMenuController",
+		   L"ShowDialogue",
+		   4,
+		   &methodAddress
+		);
+		if (!success || !methodAddress) {
+			ConsoleOutput("Textractor: Failed to get BakinPlayer ShowDialogue method address");
+		} else {
+			ConsoleOutput("Textractor: Found ShowDialogue method at address: 0x%p", methodAddress);
+			HookParam hp = {};
+			hp.address = reinterpret_cast<uint64_t>(methodAddress);
+			hp.offset = pusha_rdx_off - 4;
+			hp.type = USING_STRING | USING_UNICODE;
+			hp.padding = 0xC;
+			ConsoleOutput("Textractor: INSERT BakinPlayer_ShowDialogue Hook");
+			NewHook(hp, "BakinPlayer ShowDialogue");
+			flag = true;
+		}
+
+		return flag;
+	}
+
 	bool UnsafeDetermineEngineType()
 	{
 		if (Util::CheckFile(L"PPSSPP*.exe") && FindPPSSPP()) return true;
@@ -2467,6 +2534,10 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			bool status = InsertSakanaGLHook();
 			status |= InsertSakanaGL2Hook();
 			return status;
+		}
+
+		if (Util::CheckFile(L"bakinengine.dll")) {
+			return InsertBakinPlayerHook();
 		}
 
 		// 也许有更好的检测方法
