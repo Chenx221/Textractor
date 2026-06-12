@@ -2402,15 +2402,22 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		// WillPlus6Hook 64bit Port
 		// 2.1.0.0
 		// 48 8b c4 55 53 56 57 41 54 41 55 41 56 41 57 48 8d 6c 24 ?? 48 81 EC ?? ?? ?? ?? 0f 29 70 ?? 0f 29 78 ?? 44 0f 29 40 ?? 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 45 ?? 4d 8b e1
-		const BYTE bytes[] = {
+		const BYTE bytes1_1[] = {
 			0x48, 0x8B, 0xC4, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8D, 0x6C, 0x24, XX, 0x48, 0x81, 0xEC, XX4, 0x0F, 0x29, 0x70, XX, 0x0F, 0x29, 0x78, XX, 0x44, 0x0F, 0x29, 0x40, XX, 0x48, 0x8B, 0x05, XX4, 0x48, 0x33, 0xC4, 0x48, 0x89, 0x45, XX, 0x4D, 0x8B, 0xE1
 		};
 
 		// 有閑夫人倶楽部 -体験版-
 		// 2.1.1.0
 		// 48 8B C4 55 53 56 57 41 54 41 55 41 56 41 57 48 8D A8 ?? ?? ?? ?? 48 81 EC ?? ?? ?? ?? 0F 29 70 ?? 0F 29 78 ?? 44 0F 29 40 ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 4D 8B E1
-		const BYTE bytes1[] = {
+		const BYTE bytes1_2[] = {
 			0x48, 0x8B, 0xC4, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8D, 0xA8, XX4, 0x48, 0x81, 0xEC, XX4, 0x0F, 0x29, 0x70, XX, 0x0F, 0x29, 0x78, XX, 0x44, 0x0F, 0x29, 0x40, XX, 0x48, 0x8B, 0x05, XX4, 0x48, 0x33, 0xC4, 0x48, 0x89, 0x45, XX, 0x4D, 0x8B, 0xE1
+		};
+
+		// 虜ノ桜 ～美しく咲き、淫らに散らされる処女たち～ 体験版
+		// 2.1.2.0
+		// 48 8B C4 55 53 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC ?? ?? ?? ?? 0F 29 70 ?? 0F 29 78 ?? 44 0F 29 40 ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 4D 8B E9
+		const BYTE bytes1_3[] = {
+			0x48, 0x8B, 0xC4, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8D, 0x6C, 0x24, XX, 0x48, 0x81, 0xEC, XX4, 0x0F, 0x29, 0x70, XX, 0x0F, 0x29, 0x78, XX, 0x44, 0x0F, 0x29, 0x40, XX, 0x48, 0x8B, 0x05, XX4, 0x48, 0x33, 0xC4, 0x48, 0x89, 0x45, XX, 0x4D, 0x8B, 0xE9
 		};
 
 		ULONG64 range = min(processStopAddress - processStartAddress, X64_MAX_REL_ADDR);
@@ -2452,9 +2459,12 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 				flag = true;
 			}
 		};
-		doHook1(bytes, sizeof(bytes));
+		doHook1(bytes1_1, sizeof(bytes1_1));
 		if (!flag) {
-			doHook1(bytes1, sizeof(bytes1));
+			doHook1(bytes1_2, sizeof(bytes1_2));
+			if (!flag) {
+				doHook1(bytes1_3, sizeof(bytes1_3));
+			}
 		}
 
 		gFlag |= flag;
@@ -2464,7 +2474,7 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		flag = false;
 
 		// WillPlus7Hook 64bit Port
-		const BYTE bytes2[] = {
+		const BYTE bytes2_1[] = {
 			0x40, 0x56,				// push rsi	// hook here
 			0x57,					// push rdi
 			0x41, 0x56,				// push r14
@@ -2472,26 +2482,40 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			0x48, 0x83, 0x7A, XX2,	// cmp qword ptr ds:[rdx+18],7
 			0x49, 0x8B, 0xF8		// mov rdi,r8
 		};
-		for (auto addr : Util::SearchMemory(bytes2, sizeof(bytes2), PAGE_EXECUTE, processStartAddress, processStartAddress + range)) {
-			HookParam hp = {};
-			hp.address = addr;
-			hp.offset = pusha_rcx_off - 4;
-			hp.type = USING_STRING | USING_UNICODE;
-			hp.text_fun = [](uint64_t rsp_base, HookParam* pHp, BYTE, uint64_t* data, uintptr_t* split, DWORD* count) {
-				uint64_t rcx = regof(rcx, rsp_base);
-				uint64_t length = *(uint64_t*)(rcx + 0x10);
-				uint64_t capacity = *(uint64_t*)(rcx + 0x18);
-				if (capacity >= 8) {
-					*data = *(uint64_t*)rcx;
-				} else {
-					*data = rcx;
-				}
-				*count = static_cast<DWORD>(length*2);
-			};
-			ConsoleOutput("Textractor: INSERT WillPlus64_2 Hook");
-			NewHook(hp, "WillPlus64_2");
-			flag = true;
+		// 虜ノ桜 ～美しく咲き、淫らに散らされる処女たち～ 体験版
+		// 2.1.2.0
+		// 40 55 56 57 48 81 EC ?? ?? ?? ?? 48 83 7A
+		const BYTE bytes2_2[] = {
+			0x40, 0x55, 0x56, 0x57, 0x48, 0x81, 0xEC, XX4, 0x48, 0x83, 0x7A
+		};
+
+		auto doHook2 = [&](const BYTE* pattern, size_t patSize) {
+			for (auto addr : Util::SearchMemory(pattern, patSize, PAGE_EXECUTE, processStartAddress, processStartAddress + range)) {
+				HookParam hp = {};
+				hp.address = addr;
+				hp.offset = pusha_rcx_off - 4;
+				hp.type = USING_STRING | USING_UNICODE;
+				hp.text_fun = [](uint64_t rsp_base, HookParam* pHp, BYTE, uint64_t* data, uintptr_t* split, DWORD* count) {
+					uint64_t rcx = regof(rcx, rsp_base);
+					uint64_t length = *(uint64_t*)(rcx + 0x10);
+					uint64_t capacity = *(uint64_t*)(rcx + 0x18);
+					if (capacity >= 8) {
+						*data = *(uint64_t*)rcx;
+					} else {
+						*data = rcx;
+					}
+					*count = static_cast<DWORD>(length*2);
+				};
+				ConsoleOutput("Textractor: INSERT WillPlus64_2 Hook");
+				NewHook(hp, "WillPlus64_2");
+				flag = true;
+			}
+		};
+		doHook2(bytes2_1, sizeof(bytes2_1));
+		if (!flag) {
+			doHook2(bytes2_2, sizeof(bytes2_2));
 		}
+
 		gFlag |= flag;
 		if(!flag) {
 			ConsoleOutput("Textractor:WillPlus64_2: pattern not found");
