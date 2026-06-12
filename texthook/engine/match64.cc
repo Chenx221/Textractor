@@ -1998,6 +1998,34 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			}
 		}
 
+		// Project::Novel::NovelText::Parse
+		// ドットアビスX
+		// 4C 89 44 24 ?? 48 89 54 24 ?? 55 53 56 57 41 54 41 55 41 57 48 8B EC 48 83 EC ??
+		if (Util::CheckFile(L"ドットアビスX.exe") && Util::CheckFile(L"ドットアビスX_Data")) {
+			const BYTE bytes4[] = {
+				0x4C, 0x89, 0x44, 0x24, XX, 0x48, 0x89, 0x54, 0x24, XX, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x57, 0x48, 0x8B, 0xEC, 0x48, 0x83, 0xEC, XX
+			};
+			for (auto addr: Util::SearchMemory(bytes4, sizeof(bytes4), PAGE_EXECUTE, minAddress, maxAddress)) {
+				HookParam hp = {};
+				hp.address = addr;
+				hp.type = USING_STRING | USING_UNICODE | NO_CONTEXT;
+				hp.offset = pusha_r8_off - 4;
+				hp.padding = 0x14;
+				hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+				{
+					auto text = static_cast<LPWSTR>(data);
+					auto len =  static_cast<size_t>(*size);
+					std::wregex pattern(LR"(<[^>]+?>)");
+					RegexReplacerW(text, &len, pattern, L"");
+					*size = static_cast<DWORD>(len);
+					return true;
+				};
+				NewHook(hp, "Unity_IL2cpp_SP_ABYSS");
+				ConsoleOutput("Insert: Unity IL2cpp Game SP Hook (ABYSS)");
+				return true;
+			}
+		}
+
 		return false;
 	}
 
