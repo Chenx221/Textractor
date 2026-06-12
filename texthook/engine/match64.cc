@@ -1719,13 +1719,12 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		return flag;
 	}
 
-	bool InsertUnityIL2TMPHook() {
-		// TMPro_TMP_Text__set_text
+	// TMPro_TMP_Text__set_text
+	bool InsertUnityIl2TMPTextHook(HMODULE module) {
 		const BYTE bytes[] = {
 			0xCC, 0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x80, 0xB9, 0xE8, 0x00, 0x00, 0x00, 0x00
 		};
 		bool flag = false;
-		HMODULE module = GetModuleHandleW(L"GameAssembly.dll");
 		auto [minAddress, maxAddress] = Util::QueryModuleLimits(module);
 		for (auto addr: Util::SearchMemory(bytes, sizeof(bytes), PAGE_EXECUTE, minAddress, maxAddress)) {
 			HookParam hp = {};
@@ -1748,12 +1747,46 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			ConsoleOutput("Insert: Unity IL2cpp TMPro Text Hook");
 			flag = true;
 		}
-
-		// TMPro_TMP_Text__SetText
-		const BYTE bytes2[] = {
+		if (!flag) {
+			// #2
+			// 48 89 5C 24 ?? 57 48 83 EC ?? 80 B9 ?? ?? ?? ?? ?? 48 8B FA 48 8B D9 75 ?? 48 83 B9
+			const BYTE bytes1[] = {
+				0xCC, 0x48, 0x89, 0x5C, 0x24, XX, 0x57, 0x48, 0x83, 0xEC, XX, 0x80, 0xB9, XX4, XX, 0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9, 0x75, XX, 0x48, 0x83, 0xB9
+			};
+			for (auto addr: Util::SearchMemory(bytes1, sizeof(bytes1), PAGE_EXECUTE, minAddress, maxAddress)) {
+				HookParam hp = {};
+				hp.address = addr + 1;
+				hp.type = USING_STRING | USING_UNICODE;
+				hp.offset = pusha_rdx_off - 4;
+				hp.padding = 0x14;
+				hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+				{
+					auto text = static_cast<LPWSTR>(data);
+					auto len =  static_cast<size_t>(*size);
+					if (len == 0)
+						return false;
+					std::wregex pattern(LR"(<[^>]+?>)");
+					RegexReplacerW(text, &len, pattern, L"");
+					*size = static_cast<DWORD>(len);
+					return true;
+				};
+				NewHook(hp, "TMPro_set_text");
+				ConsoleOutput("Insert: Unity IL2cpp TMPro Text Hook");
+				flag = true;
+			}
+		}
+		if (!flag)
+			ConsoleOutput("Textractor:UnityIL2TMPTextHook: pattern not found");
+		return flag;
+	}
+	// TMPro_TMP_Text__SetText
+	bool InsertUnityIl2TMPSetTextHook(HMODULE module) {
+		const BYTE bytes[] = {
 			0xCC, 0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x30, 0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9, 0x48, 0x85, 0xD2, 0x75
 		};
-		for (auto addr: Util::SearchMemory(bytes2, sizeof(bytes2), PAGE_EXECUTE, minAddress, maxAddress)) {
+		bool flag = false;
+		auto [minAddress, maxAddress] = Util::QueryModuleLimits(module);
+		for (auto addr: Util::SearchMemory(bytes, sizeof(bytes), PAGE_EXECUTE, minAddress, maxAddress)) {
 			HookParam hp = {};
 			hp.address = addr + 1;
 			hp.type = USING_STRING | USING_UNICODE;
@@ -1771,12 +1804,47 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 				return true;
 			};
 			NewHook(hp, "TMPro_SetText");
-			ConsoleOutput("Insert: Unity IL2cpp TMPro Text Hook2");
+			ConsoleOutput("Insert: Unity IL2cpp TMPro SetText Hook");
 			flag = true;
 		}
-		if (flag) return flag;
-		ConsoleOutput("Textractor:UnityIL2TMPHook: pattern not found");
-		return false;
+		if (!flag) {
+			// #2
+			// 48 8B C4 48 89 58 ?? 48 89 68 ?? 48 89 70 ?? 57 41 54 41 55 41 56 41 57 48 83 EC ?? 33 FF
+			const BYTE bytes1[] = {
+				0xCC, 0x48, 0x8B, 0xC4, 0x48, 0x89, 0x58, XX, 0x48, 0x89, 0x68, XX, 0x48, 0x89, 0x70, XX, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xEC, XX, 0x33, 0xFF
+			};
+			for (auto addr: Util::SearchMemory(bytes1, sizeof(bytes1), PAGE_EXECUTE, minAddress, maxAddress)) {
+				HookParam hp = {};
+				hp.address = addr + 1;
+				hp.type = USING_STRING | USING_UNICODE;
+				hp.offset = pusha_rdx_off - 4;
+				hp.padding = 0x14;
+				hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+				{
+					auto text = static_cast<LPWSTR>(data);
+					auto len =  static_cast<size_t>(*size);
+					if (len == 0)
+						return false;
+					std::wregex pattern(LR"(<[^>]+?>)");
+					RegexReplacerW(text, &len, pattern, L"");
+					*size = static_cast<DWORD>(len);
+					return true;
+				};
+				NewHook(hp, "TMPro_SetText");
+				ConsoleOutput("Insert: Unity IL2cpp TMPro SetText Hook");
+				flag = true;
+			}
+		}
+		if (!flag)
+			ConsoleOutput("Textractor:UnityIL2TMPSetTextHook: pattern not found");
+		return flag;
+	}
+
+	bool InsertUnityIL2TMPHook() {
+		HMODULE module = GetModuleHandleW(L"GameAssembly.dll");
+		bool b = InsertUnityIl2TMPTextHook(module);
+		b|= InsertUnityIl2TMPSetTextHook(module);
+		return b;
 	}
 
 	bool InsertUnityIL2UtageHook() {
