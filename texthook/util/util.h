@@ -24,6 +24,10 @@ std::pair<uint64_t, uint64_t> QueryModuleLimits(HMODULE module);
 std::vector<uint64_t> SearchMemory(const void* bytes, short length, DWORD protect = PAGE_EXECUTE, uintptr_t minAddr = 0, uintptr_t maxAddr = -1ULL);
 uintptr_t FindFunction(const char* function);
 
+bool IsModuleLoadedFromAppDir(HMODULE hModule, LPCWSTR moduleName);
+bool ModuleHasExport(HMODULE hModule, const char* funcName);
+bool IsHookedDllLoaded(LPCWSTR moduleName, const char* funcName);
+
 } // namespace Util
 
 // EOF

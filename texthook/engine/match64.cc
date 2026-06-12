@@ -2470,6 +2470,18 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		return flag;
 	}
 
+	bool InsertV8HookHelper() {
+		HMODULE module = GetModuleHandleW(L"version.dll");
+		HookParam hp = {};
+		hp.address = reinterpret_cast<uintptr_t>(GetProcAddress(module, "hookme"));
+		hp.offset = pusha_rcx_off - 4;
+		hp.split = pusha_rdx_off - 4;
+		hp.type = USING_STRING | USING_UTF8 | NO_CONTEXT | USING_SPLIT;
+		ConsoleOutput("Textractor: INSERT V8Helper Hook");
+		NewHook(hp, "V8Helper Hook");
+		return true;
+	}
+
 	bool UnsafeDetermineEngineType()
 	{
 		if (Util::CheckFile(L"PPSSPP*.exe") && FindPPSSPP()) return true;
@@ -2484,6 +2496,15 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 
 		if (Util::CheckFile(L"Rio.arc") && Util::CheckFile(L"Chip*.arc")) {
 			return InsertWillPlus64Hook();
+		}
+
+		if (Util::CheckFile(L"nw.dll") || Util::CheckFile(L"v8_context_snapshot.bin")) {
+			if (Util::IsHookedDllLoaded(L"version.dll", "hookme")) {
+				InsertV8HookHelper();
+			} else {
+				ConsoleOutput("Textractor: V8Hook Helper(version.dll) not found, skipping V8Helper Hook");
+				ConsoleOutput("You can download it from: https://github.com/Chenx221/v8hook");
+			}
 		}
 
 		if (checkv8orcef())return true;

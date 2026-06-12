@@ -8,6 +8,8 @@
 #include "main.h"
 #include <Psapi.h>
 #include <cstring>
+#include <shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
 
 namespace { // unnamed
 
@@ -413,6 +415,55 @@ uintptr_t FindFunction(const char* function)
     static auto _ = EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), DUMMY);
     for (auto module : modules) if (auto addr = GetProcAddress(module, function)) return (uintptr_t)addr;
     return 0;
+}
+
+bool IsModuleLoadedFromAppDir(HMODULE hModule, LPCWSTR moduleName)
+{
+    if (!hModule || !moduleName) return false;
+
+    wchar_t exePath[MAX_PATH] = { 0 };
+    if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0) return false;
+    PathRemoveFileSpecW(exePath);
+
+    wchar_t modPath[MAX_PATH] = { 0 };
+    if (GetModuleFileNameW(hModule, modPath, MAX_PATH) == 0) return false;
+
+    wchar_t* fileName = PathFindFileNameW(modPath);
+    if (_wcsicmp(fileName, moduleName) != 0) return false;
+
+    PathRemoveFileSpecW(modPath);
+    return (_wcsicmp(modPath, exePath) == 0);
+}
+
+bool ModuleHasExport(HMODULE hModule, const char* funcName)
+{
+    if (!hModule || !funcName) return false;
+    return (GetProcAddress(hModule, funcName) != nullptr);
+}
+
+bool IsHookedDllLoaded(LPCWSTR moduleName, const char* funcName)
+{
+    if (!moduleName || !funcName) return false;
+
+    HMODULE modules[1024] = { 0 };
+    DWORD cbNeeded = 0;
+    if (!EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &cbNeeded)) {
+        return false;
+    }
+
+    DWORD moduleCount = cbNeeded / sizeof(HMODULE);
+    for (DWORD i = 0; i < moduleCount; ++i)
+    {
+        if (IsModuleLoadedFromAppDir(modules[i], moduleName))
+        {
+            if (ModuleHasExport(modules[i], funcName))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 }
