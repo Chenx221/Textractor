@@ -21684,7 +21684,7 @@ static char* (*mono_image_get_name)(uintptr_t) = NULL;
 static uintptr_t(*mono_class_from_name)(uintptr_t,const char*,const char*) = NULL;
 static uintptr_t(*mono_class_vtable)(uintptr_t, uintptr_t) = NULL;
 static void* (*mono_vtable_get_static_field_data)(uintptr_t) = NULL;
-static uintptr_t(*mono_class_get_method_from_name)(uintptr_t, char*, int) = NULL;
+static uintptr_t(*mono_class_get_method_from_name)(uintptr_t, const char*, int) = NULL;
 static uintptr_t(*mono_class_get_property_from_name)(uintptr_t,const char*) = NULL;
 static uintptr_t(*mono_property_get_set_method)(uintptr_t) = NULL;
 static  uint64_t* (*mono_compile_method)(uintptr_t) = NULL;
@@ -21702,55 +21702,110 @@ int getV8StringLength(uintptr_t stack, uintptr_t data) {
 
 }
 void MonoCallBack(uintptr_t assembly, void* userData) {
-    uintptr_t mono_property = NULL;
     uintptr_t image = mono_assembly_get_image(assembly);
     // TMP_Text TextMeshProUGUI
     auto mono_tmp_class = mono_class_from_name(image, "TMPro", "TMP_Text");
     auto mono_ugui_class = mono_class_from_name(image, "UnityEngine.UI", "Text");
     auto mono_ngui_class = mono_class_from_name(image, "", "UILabel");
-    if (!mono_tmp_class && !mono_ugui_class && !mono_ngui_class)
-        return;
-    if (mono_tmp_class) {
-        mono_property = mono_class_get_property_from_name(mono_tmp_class, "text");
-    }
-    else if(mono_ugui_class)
-    {
-        mono_property = mono_class_get_property_from_name(mono_ugui_class, "text");
-    }
-    else if (mono_ngui_class) {
-        mono_property = mono_class_get_property_from_name(mono_ngui_class, "text");
-    }
 
-    if (mono_property == NULL)
+    // sp
+    //The Letter
+    auto mono_vnuimanager_class = mono_class_from_name(image, "", "VNUIManager");
+
+    if (!mono_tmp_class && !mono_ugui_class && !mono_ngui_class && !mono_vnuimanager_class)
         return;
-    auto mono_set_method = mono_property_get_set_method(mono_property);
-    //注意必须调用mono_thread_attach 附加到主domain 才能调用 mono_method_get_unmanaged_thunk mono_compile_method 或mono_runtime_invoke
+
     mono_thread_attach(mono_get_root_domain());
-    uint64_t* method_pointer = mono_compile_method(mono_set_method);
-    if (method_pointer) {
-        HookParam hp = {};
-        hp.type = USING_STRING | USING_UNICODE |DATA_INDIRECT;
-        hp.address = (uint64_t)method_pointer;
-        hp.offset = pusha_esp_off-4; // esp+8
-        hp.index = 12;
-        hp.padding = 12;
 
-        if (mono_tmp_class) {
-            ConsoleOutput("Mono_X86,Insert: TextMeshProUGUI_set_text Hook BY:IOV");
-            hp.length_fun = getV8StringLength;
-            NewHook(hp, "TextMeshProUGUI_set_text");
+    if (mono_tmp_class) {
+        auto mono_property = mono_class_get_property_from_name(mono_tmp_class, "text");
+        if (mono_property) {
+            auto mono_set_method = mono_property_get_set_method(mono_property);
+            uint64_t* method_pointer = mono_compile_method(mono_set_method);
+            if (method_pointer) {
+                HookParam hp = {};
+                hp.type = USING_STRING | USING_UNICODE | DATA_INDIRECT;
+                hp.address = (uint64_t)method_pointer;
+                hp.offset = pusha_esp_off - 4;
+                hp.index = 12;
+                hp.padding = 12;
+                hp.length_fun = getV8StringLength;
+
+                ConsoleOutput("Mono_X86,Insert: TextMeshProUGUI_set_text Hook BY:IOV");
+                NewHook(hp, "TextMeshProUGUI_set_text");
+            }
         }
-        else if(mono_ugui_class)
-        {
-            ConsoleOutput("Mono_X86,Insert: UGUI_set_text Hook BY:IOV");
-            hp.length_fun = getV8StringLength;
-            NewHook(hp, "UGUI_set_text");
+    }
+
+    if (mono_ugui_class) {
+        auto mono_property = mono_class_get_property_from_name(mono_ugui_class, "text");
+        if (mono_property) {
+            auto mono_set_method = mono_property_get_set_method(mono_property);
+            uint64_t* method_pointer = mono_compile_method(mono_set_method);
+            if (method_pointer) {
+                HookParam hp = {};
+                hp.type = USING_STRING | USING_UNICODE | DATA_INDIRECT;
+                hp.address = (uint64_t)method_pointer;
+                hp.offset = pusha_esp_off - 4;
+                hp.index = 12;
+                hp.padding = 12;
+                hp.length_fun = getV8StringLength;
+
+                ConsoleOutput("Mono_X86,Insert: UGUI_set_text Hook BY:IOV");
+                NewHook(hp, "UGUI_set_text");
+            }
         }
-        else if(mono_ngui_class)
-        {
-            ConsoleOutput("Mono_X86,Insert: NGUI_set_text Hook BY:IOV");
-            hp.length_fun = getV8StringLength;
-            NewHook(hp, "NGUI_set_text");
+    }
+
+    if (mono_ngui_class) {
+        auto mono_property = mono_class_get_property_from_name(mono_ngui_class, "text");
+        if (mono_property) {
+            auto mono_set_method = mono_property_get_set_method(mono_property);
+            uint64_t* method_pointer = mono_compile_method(mono_set_method);
+            if (method_pointer) {
+                HookParam hp = {};
+                hp.type = USING_STRING | USING_UNICODE | DATA_INDIRECT;
+                hp.address = (uint64_t)method_pointer;
+                hp.offset = pusha_esp_off - 4;
+                hp.index = 12;
+                hp.padding = 12;
+                hp.length_fun = getV8StringLength;
+
+                ConsoleOutput("Mono_X86,Insert: NGUI_set_text Hook BY:IOV");
+                NewHook(hp, "NGUI_set_text");
+            }
+        }
+    }
+
+    if (mono_vnuimanager_class) {
+        auto mono_property = mono_class_get_method_from_name(mono_vnuimanager_class, "StartSentence", -1);
+        if (mono_property) {
+            uint64_t* method_pointer = mono_compile_method(mono_property);
+            if (method_pointer) {
+                HookParam hp = {};
+                hp.type = USING_STRING | USING_UNICODE | DATA_INDIRECT;
+                hp.address = (uint64_t)method_pointer;
+                hp.offset = pusha_esp_off - 4;
+                hp.index = 12;
+                hp.padding = 12;
+                hp.length_fun = getV8StringLength;
+                hp.filter_fun = [](LPVOID data, DWORD *size, HookParam *, BYTE)
+                {
+                  auto text = static_cast<LPWSTR>(data);
+			            auto len =  static_cast<size_t>(*size);
+
+                  if (len == 0)
+				            return false;
+
+                  std::wregex pattern(LR"([<\[][^\]>]*[>\]])");
+	                RegexReplacerW(text, &len, pattern, L"");
+                  *size = static_cast<DWORD>(len);
+                  return true;
+                };
+
+                ConsoleOutput("Mono_X86,Insert: VNUIManager_StartSentence Hook (SP:The Letter)");
+                NewHook(hp, "VNUIManager_StartSentence");
+            }
         }
     }
 
@@ -21763,13 +21818,14 @@ bool InsertMonoHooksByAssembly(HMODULE module) {
     mono_image_get_name = (char* (*)(uintptr_t))GetProcAddress(module, "mono_image_get_name");
     mono_class_from_name = (uintptr_t(*)(uintptr_t,const char*,const char*))GetProcAddress(module, "mono_class_from_name");
     mono_class_get_property_from_name = (uintptr_t(*)(uintptr_t,const char*))GetProcAddress(module, "mono_class_get_property_from_name");
+    mono_class_get_method_from_name = (uintptr_t(*)(uintptr_t,const char*, int))GetProcAddress(module, "mono_class_get_method_from_name");
     mono_property_get_set_method = (uintptr_t(*)(uintptr_t))GetProcAddress(module, "mono_property_get_set_method");
     mono_compile_method = (uint64_t * (*)(uintptr_t))GetProcAddress(module, "mono_compile_method");
     mono_get_root_domain = (MonoDomain * (*)())GetProcAddress(module, "mono_get_root_domain");
 
     mono_thread_attach = (void (*)(MonoDomain*))GetProcAddress(module, "mono_thread_attach");
     if (mono_assembly_foreach && mono_assembly_get_image && mono_image_get_name && mono_class_from_name &&
-        mono_class_get_property_from_name && mono_property_get_set_method && mono_compile_method &&
+        mono_class_get_property_from_name && mono_class_get_method_from_name && mono_property_get_set_method && mono_compile_method &&
         mono_get_root_domain && mono_thread_attach) {
         mono_assembly_foreach(MonoCallBack, NULL);
         return true;
