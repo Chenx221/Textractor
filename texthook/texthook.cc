@@ -171,6 +171,7 @@ void TextHook::Send(uintptr_t dwDataBase)
 		DWORD dwCountForHook = static_cast<DWORD>(count);
 		if (hp.text_fun) {
 			hp.text_fun(dwDataBase, &hp, 0, &data, &tp.ctx2, &dwCountForHook);
+		    count = static_cast<int>(dwCountForHook);
 		}
 		else {
 			if (hp.type & USING_SPLIT)
