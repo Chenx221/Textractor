@@ -16109,6 +16109,20 @@ bool InsertSilkys3Hook()
     return true;
   }
 
+  // https://vndb.org/v34136 Remake + DLC
+  // FF D0 ?? ?? 68 ?? ?? ?? ?? 68 ?? ?? ?? ?? 0F B7 F0
+  const BYTE bytes4[] = {
+    0xFF, 0xD0, XX2, 0x68, XX4, 0x68, XX4, 0x0F, 0xB7, 0xF0
+  };
+  addr = MemDbg::findBytes(bytes4, sizeof(bytes4), processStartAddress, processStartAddress + range);
+  if(addr){
+    hp.address = addr + 2;
+    hp.type |= USING_UNICODE;
+    ConsoleOutput("vnreng: INSERT Silkys3");
+    NewHook(hp, "Silkys3");
+    return true;
+  }
+
   ConsoleOutput("vnreng:Silkys3: pattern not found");
   return false;
 }
@@ -16193,10 +16207,36 @@ bool InsertSilkys4Hook() {
     return true;
 }
 
+bool InsertSilkys5Hook() {
+    //by Chenx221
+
+    // https://vndb.org/v34136 Remake + DLC
+    // 83 7D ?? ?? 8D 55 ?? 0F 47 55 ?? 83 EC ?? 8B CC E8 ?? ?? ?? ?? 8B CE
+    const BYTE bytes[] = {
+        0x83, 0x7D, XX2, 0x8D, 0x55, XX, 0x0F, 0x47, 0x55, XX, 0x83, 0xEC, XX, 0x8B, 0xCC, 0xE8, XX4, 0x8B, 0xCE
+    };
+
+    ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+    ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+    if(!addr){
+      ConsoleOutput("Textractor:Silkys5: pattern not found");
+      return false;
+    }
+    HookParam hp = {};
+    hp.address = addr + 0x10;
+    hp.offset = pusha_edx_off -4;
+    hp.type = USING_STRING | USING_SPLIT;
+    hp.split = pusha_ecx_off -4;
+    ConsoleOutput("Textractor: INSERT Silkys5");
+    NewHook(hp, "Silkys5");
+    return true;
+}
+
 bool InsertSilkysHooks()
 { bool b = InsertSilkys3Hook();
   bool c = InsertSilkys4Hook();
-return InsertSilkysHook() || InsertSilkys2Hook() || b || c;}
+  bool d = InsertSilkys5Hook();
+return InsertSilkysHook() || InsertSilkys2Hook() || b || c || d;}
 
 /** jichi 6/1/2014 Eushully
  *  Insert to the last GetTextExtentPoint32A
