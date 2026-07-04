@@ -46,6 +46,7 @@ after_build:
   - mkdir C:\textractor-build\x64
   - xcopy C:\Textractor\builds\Release_x86\* C:\textractor-build\x86\ /E /I /Y
   - xcopy C:\Textractor\builds\Release_x64\* C:\textractor-build\x64\ /E /I /Y
+  - copy C:\Textractor\INSTALL_THIS_UNICODE_FONT.ttf C:\textractor-build\INSTALL_THIS_UNICODE_FONT.ttf
   - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip C:\textractor-build\*
   - appveyor PushArtifact %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip
   - mkdir C:\texthook
