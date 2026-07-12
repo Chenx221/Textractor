@@ -66,6 +66,7 @@ const char* ATTACH_INFO = u8R"(If you don't see the process you want to attach, 
 You can also type in the process ID)";
 const char* REFRESH = u8"Refresh";
 const char* HIDE_INCOMPATIBLE_ARCHITECTURE = u8"Hide incompatible architecture";
+const char* HIDE_NO_TITLE_PROCESS = u8"Hide processes without title";
 const char* SELECT_PROCESS_INFO = u8"If you manually type in the process file name, use the absolute path";
 const char* FROM_COMPUTER = u8"Select from computer";
 const char* PROCESSES = u8"Processes (*.exe)";

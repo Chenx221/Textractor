@@ -18,6 +18,7 @@ ATTACH_INFO = u8R"(如果没看见想要附加的进程，请尝试使用管理�
 也可以手动输入进程ID)";
 REFRESH = u8"刷新";
 HIDE_INCOMPATIBLE_ARCHITECTURE = u8"隐藏架构不匹配的进程";
+HIDE_NO_TITLE_PROCESS = u8"隐藏无标题的进程";
 SELECT_PROCESS_INFO = u8"如果手动输入游戏名，请使用绝对路径";
 FROM_COMPUTER = u8"从资源管理器中选择";
 PROCESSES = u8"可执行文件 (*.exe)";

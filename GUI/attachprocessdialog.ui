@@ -26,6 +26,9 @@
       <widget class="QCheckBox" name="filterArchitectureCheckbox"/>
      </item>
      <item>
+      <widget class="QCheckBox" name="filterNoTitleCheckbox"/>
+     </item>
+     <item>
       <widget class="QPushButton" name="refreshButton"/>
      </item>
     </layout>

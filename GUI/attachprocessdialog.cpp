@@ -8,6 +8,7 @@ extern const char* SELECT_PROCESS;
 extern const char* ATTACH_INFO;
 extern const char* REFRESH;
 extern const char* HIDE_INCOMPATIBLE_ARCHITECTURE;
+extern const char* HIDE_NO_TITLE_PROCESS;
 
 ProcessInfo::ProcessInfo() : processId(0), is64Bit(false) {}
 
@@ -45,6 +46,7 @@ AttachProcessDialog::AttachProcessDialog(QWidget* parent, std::vector<ProcessInf
 	ui.label->setText(ATTACH_INFO);
 	ui.refreshButton->setText(REFRESH);
 	ui.filterArchitectureCheckbox->setText(HIDE_INCOMPATIBLE_ARCHITECTURE);
+	ui.filterNoTitleCheckbox->setText(HIDE_NO_TITLE_PROCESS);
 	ui.processList->setModel(&model);
 
 	populateProcessList();
@@ -53,6 +55,10 @@ AttachProcessDialog::AttachProcessDialog(QWidget* parent, std::vector<ProcessInf
 	connect(ui.buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
 	connect(ui.filterArchitectureCheckbox, &QCheckBox::stateChanged, [this](int) {
+		applyFilters();
+	});
+
+	connect(ui.filterNoTitleCheckbox, &QCheckBox::stateChanged, [this](int) {
 		applyFilters();
 	});
 
@@ -119,6 +125,7 @@ void AttachProcessDialog::populateProcessList()
 		auto item = new QStandardItem(info.icon, displayText);
 		item->setData(static_cast<unsigned int>(info.processId), Qt::UserRole);
 		item->setData(info.is64Bit, Qt::UserRole + 1);
+		item->setData(info.windowTitle, Qt::UserRole + 2);
 		item->setEditable(false);
 		model.appendRow(item);
 	}
@@ -130,6 +137,7 @@ void AttachProcessDialog::applyFilters()
 {
 	QString filter = ui.processEdit->text().trimmed();
 	bool filterArchitecture = ui.filterArchitectureCheckbox->isChecked();
+	bool filterNoTitle = ui.filterNoTitleCheckbox->isChecked();
 
 	for (int i = 0; i < model.rowCount(); ++i)
 	{
@@ -137,6 +145,7 @@ void AttachProcessDialog::applyFilters()
 		QString displayText = item->text();
 		DWORD pid = item->data(Qt::UserRole).toUInt();
 		bool is64Bit = item->data(Qt::UserRole + 1).toBool();
+		QString windowTitle = item->data(Qt::UserRole + 2).toString();
 
 		bool matchesFilter = filter.isEmpty() ||
 							displayText.contains(filter, Qt::CaseInsensitive) ||
@@ -144,8 +153,9 @@ void AttachProcessDialog::applyFilters()
 							QString::number(pid, 10).contains(filter, Qt::CaseInsensitive);
 
 		bool matchesArchitecture = !filterArchitecture || (is64Bit == isCurrentProcess64Bit);
+		bool matchesTitle = !filterNoTitle || !windowTitle.isEmpty();
 
-		ui.processList->setRowHidden(i, !(matchesFilter && matchesArchitecture));
+		ui.processList->setRowHidden(i, !(matchesFilter && matchesArchitecture && matchesTitle));
 	}
 }
 
