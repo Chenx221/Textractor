@@ -69,6 +69,9 @@ extern const char* SHOW_SYSTEM_PROCESSES;
 extern const char* DEFAULT_CODEPAGE;
 extern const char* FLUSH_DELAY;
 extern const char* FLUSH_DELAY_SPACING;
+extern const char* FLUSH_DELAY_SPACING_OFF;
+extern const char* FLUSH_DELAY_SPACING_SPACE;
+extern const char* FLUSH_DELAY_SPACING_NEWLINE;
 extern const char* MAX_BUFFER_SIZE;
 extern const char* MAX_HISTORY_SIZE;
 extern const char* LIMIT_STRING_LENGTH;
@@ -622,7 +625,6 @@ namespace
 			{ autoAttachSavedOnly, ATTACH_SAVED_ONLY, KEY_ATTACH_SAVED_ONLY },
 			{checkUpdate,CHECK_UPDATE, KEY_CHECK_UPDATE},
 			{ showSystemProcesses, SHOW_SYSTEM_PROCESSES, KEY_SHOW_SYSTEM_PROCESSES },
-			{ TextThread::flushDelaySpacing, FLUSH_DELAY_SPACING, KEY_FLUSH_DELAY_SPACING },
 		})
 		{
 			auto checkBox = new QCheckBox(&dialog);
@@ -644,6 +646,12 @@ namespace
 			layout.addRow(label, spinBox);
 			QObject::connect(&saveButton, &QPushButton::clicked, [spinBox, keylabel, &settings, &value] { settings.setValue(keylabel, value = spinBox->value()); });
 		}
+		QComboBox spacingCombo(&dialog);
+		spacingCombo.addItems({ FLUSH_DELAY_SPACING_OFF, FLUSH_DELAY_SPACING_SPACE, FLUSH_DELAY_SPACING_NEWLINE });
+		spacingCombo.setCurrentIndex(TextThread::flushDelaySpacing);
+		layout.addRow(FLUSH_DELAY_SPACING, &spacingCombo);
+		QObject::connect(&saveButton, &QPushButton::clicked, [&spacingCombo, &settings] { settings.setValue(KEY_FLUSH_DELAY_SPACING, TextThread::flushDelaySpacing = spacingCombo.currentIndex()); });
+
 		QComboBox languageCombo(&dialog);
 		for (int i = 0; i < LANGUAGE_COUNT; ++i)
 		{
@@ -936,7 +944,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 	autoAttachSavedOnly = settings.value(KEY_ATTACH_SAVED_ONLY, autoAttachSavedOnly).toBool();
 	checkUpdate = settings.value(KEY_CHECK_UPDATE, checkUpdate).toBool();
 	showSystemProcesses = settings.value(KEY_SHOW_SYSTEM_PROCESSES, showSystemProcesses).toBool();
-	TextThread::flushDelaySpacing = settings.value(KEY_FLUSH_DELAY_SPACING, TextThread::flushDelaySpacing).toBool();
+	TextThread::flushDelaySpacing = settings.value(KEY_FLUSH_DELAY_SPACING, TextThread::flushDelaySpacing).toInt();
 	TextThread::flushDelay = settings.value(KEY_FLUSH_DELAY, TextThread::flushDelay).toInt();
 	TextThread::maxBufferSize = settings.value(KEY_MAX_BUFFER_SIZE, TextThread::maxBufferSize).toInt();
 	TextThread::maxHistorySize = settings.value(KEY_MAX_HISTORY_SIZE, TextThread::maxHistorySize).toInt();
