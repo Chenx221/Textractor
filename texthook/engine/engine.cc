@@ -11734,6 +11734,75 @@ bool InsertWolf4Hook() {
     return true;
 }
 
+static bool WolfRPGTagFilter(LPVOID data, DWORD *size, HookParam *, BYTE)
+{
+  // By Chenx221
+	// Tag format: 0x01 <payload_len> [payload...]
+	// Ruby tag:  0x01 0x02 0x09 → next text segment is "base,furigana]"
+	// Font tag:  0x01 0x04 0x11 XX XX → discard
+	// Image tags: types 0x17/0x1F/0x22 → scan to ']', discard
+	auto text = reinterpret_cast<char*>(data);
+	DWORD len = *size;
+	if (!text || len == 0) return true;
+
+	DWORD writePos = 0;
+	bool strippingRuby = false;
+
+	for (DWORD i = 0; i < len; ) {
+		BYTE c = static_cast<BYTE>(text[i]);
+
+		// TLV tag
+		if (c == 0x01 && i + 2 < len) {
+			BYTE payloadLen = static_cast<BYTE>(text[i + 1]);
+			BYTE tagType = static_cast<BYTE>(text[i + 2]);
+
+			// Font tag: discard entirely
+			if (payloadLen == 4 && tagType == 0x11 && i + 5 <= len) {
+				i += 5;
+				continue;
+			}
+
+			// Ruby tag: mark furigana stripping
+			if (payloadLen >= 2 && tagType == 0x09) {
+				strippingRuby = true;
+				i += 1 + payloadLen;
+				continue;
+			}
+
+			// Image tags: scan to ']'
+			if (tagType == 0x17 || tagType == 0x1F || tagType == 0x22) {
+				i += 1 + payloadLen;
+				while (i < len && static_cast<BYTE>(text[i]) != ']') i++;
+				if (i < len) i++;
+				continue;
+			}
+
+			// Other tags: skip
+			DWORD skip = 1 + payloadLen;
+			i += (i + skip <= len) ? skip : (len - i);
+			continue;
+		}
+
+		// Ruby stripping: keep text before ',', discard ",furigana]"
+		if (strippingRuby) {
+			while (i < len && text[i] != ',' && static_cast<BYTE>(text[i]) != 0x01)
+				text[writePos++] = text[i++];
+			if (i < len && text[i] == ',') {
+				i++;
+				while (i < len && text[i] != ']') i++;
+				if (i < len) i++;
+			}
+			strippingRuby = false;
+			continue;
+		}
+
+		text[writePos++] = text[i++];
+	}
+
+	*size = writePos;
+	return writePos > 0;
+}
+
  bool InsertWolf5Hook() {
   //By Chenx221
 
@@ -11767,9 +11836,9 @@ bool InsertWolf4Hook() {
   myhp.type = USING_STRING | NO_CONTEXT | USING_UTF8 | DATA_INDIRECT;
   myhp.offset = pusha_eax_off - 4;
   myhp.index = 0;
+  myhp.filter_fun = WolfRPGTagFilter;
   NewHook(myhp, "WolfRPG5");
   ConsoleOutput("Insert: WolfRPG5 Hook");
-  ConsoleOutput(R"(Tips: Use Regex Filter \x01\x02\x09([^,]+?),[^\]]+?\]|[\x00-\x09\x0B-\x0C\x0E-\x1F\x7F])");
   return true;
 }
 
@@ -11807,6 +11876,7 @@ bool InsertWolf4Hook() {
   } else
   {addr+=0x18;myhp.offset = pusha_eax_off - 4;}
   myhp.address = addr;
+  myhp.filter_fun = WolfRPGTagFilter;
   NewHook(myhp, "WolfRPG6");
   ConsoleOutput("Insert: WolfRPG6 Hook");
   ConsoleOutput(R"(Recommend: Settings > Enable 'Filter repetition')");
