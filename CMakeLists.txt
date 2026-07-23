@@ -48,7 +48,7 @@ file(COPY ${ASSETS} DESTINATION ${CMAKE_FINAL_OUTPUT_DIRECTORY})
 
 include(QtUtils)
 msvc_registry_search()
-find_qt6(Core Widgets WebSockets Core5Compat)
+find_qt6(Core Widgets WebSockets Core5Compat Svg)
 
 add_library(text text.cpp)
 target_compile_definitions(text PRIVATE ${TEXT_LANGUAGE})

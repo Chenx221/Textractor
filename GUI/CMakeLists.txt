@@ -6,10 +6,11 @@ add_executable(Textractor WIN32
 	attachprocessdialog.cpp
 	Textractor.rc
 	Textractor.ico
+	icons.qrc
 		../extensions/network.cpp
 )
 target_precompile_headers(Textractor REUSE_FROM pch)
-target_link_libraries(Textractor host Qt6::Widgets Qt6::Gui shell32 winhttp)
+target_link_libraries(Textractor host Qt6::Widgets Qt6::Gui Qt6::Svg shell32 winhttp)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
 	set_target_properties(Textractor PROPERTIES LINK_FLAGS "/LARGEADDRESSAWARE")

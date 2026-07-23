@@ -23,6 +23,8 @@
 #include <QUrl>
 #include "../extensions/network.h"
 #include <algorithm>
+#include <QPainter>
+#include <QSvgRenderer>
 
 extern const char* ATTACH;
 extern const char* LAUNCH;
@@ -149,6 +151,7 @@ namespace
 	bool refreshingThemeStyle = false;
 
 	void FindHooks();
+	void RefreshIcons();
 
 	void RefreshThemeStyle()
 	{
@@ -169,6 +172,8 @@ namespace
 			}
 			widget->update();
 		}
+
+		RefreshIcons();
 
 		This->update();
 		refreshingThemeStyle = false;
@@ -899,6 +904,104 @@ namespace
 				DescribeWinHttpError(httpRequest.errorCode).c_str(), httpRequest.errorCode));
 		}
 	}
+
+	enum class ButtonAction
+	{
+		Attach, Launch, Config, Detach, Forget,
+		AddHook, RemoveHooks, SaveHooks, SearchHooks,
+		Settings, Extensions, RestartAdmin
+	};
+
+	static QIcon LoadSvgIcon(const char* resourceName, int size = 24)
+	{
+		const QString resPath = QStringLiteral(":/icons/") + resourceName;
+		QFile file(resPath);
+		if (!file.open(QIODevice::ReadOnly)) return {};
+
+		QByteArray svgData = file.readAll();
+		file.close();
+
+		const QColor fg = QApplication::palette().color(QPalette::WindowText);
+		svgData.replace("currentColor", fg.name().toLatin1());
+
+		QSvgRenderer renderer(svgData);
+		QPixmap pix(size, size);
+		pix.fill(Qt::transparent);
+		QPainter p(&pix);
+		p.setRenderHint(QPainter::Antialiasing);
+		renderer.render(&p, QRectF(0, 0, size, size));
+		p.end();
+
+		return QIcon(pix);
+	}
+
+	const char* IconResourceName(ButtonAction action)
+	{
+		static constexpr const char* resource[] = {
+			"attach", "launch", "configure", "detach", "forget",
+			"add", "remove", "save", "search",
+			"settings", "extension", "admin"
+		};
+		const int idx = static_cast<int>(action);
+		if (idx < 0 || idx >= static_cast<int>(std::size(resource))) return "";
+		return resource[idx];
+	}
+
+	static QIcon MakeIcon(ButtonAction action)
+	{
+		return LoadSvgIcon(IconResourceName(action));
+	}
+
+	std::vector<QPushButton*> sidebarButtons;
+	bool sidebarCollapsed = false;
+
+	void ToggleSidebar()
+	{
+		sidebarCollapsed = !sidebarCollapsed;
+		const int iconOnlyWidth = 36;
+		for (auto* btn : sidebarButtons)
+		{
+			if (!btn) continue;
+			if (sidebarCollapsed)
+			{
+				btn->setFixedWidth(iconOnlyWidth);
+				btn->setText(QString());
+			}
+			else
+			{
+				btn->setMinimumWidth(0);
+				btn->setMaximumWidth(16777215);
+				btn->setText(btn->property("fullText").toString());
+			}
+		}
+		ui.processCombo->setVisible(!sidebarCollapsed);
+
+		if (auto* collapseBtn = This->findChild<QPushButton*>("collapseBtn"))
+		{
+			if (sidebarCollapsed)
+			{
+				collapseBtn->setIcon(LoadSvgIcon("expand", 20));
+				collapseBtn->setProperty("iconName", "expand");
+				collapseBtn->setToolTip("Expand");
+			}
+			else
+			{
+				collapseBtn->setIcon(LoadSvgIcon("collapse", 20));
+				collapseBtn->setProperty("iconName", "collapse");
+				collapseBtn->setToolTip("Collapse");
+			}
+		}
+	}
+
+	void RefreshIcons()
+	{
+		for (auto* btn : sidebarButtons)
+		{
+			if (!btn) continue;
+			if (auto iconName = btn->property("iconName"); iconName.isValid())
+				btn->setIcon(LoadSvgIcon(iconName.toString().toLatin1().data(), 20));
+		}
+	}
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -915,30 +1018,56 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 	}
 
 	extenWindow = new ExtenWindow(this);
-	for (auto [text, slot] : Array<const char*, void(&)()>{
-		{ ATTACH, AttachProcess },
-		{ LAUNCH, LaunchProcess },
-		{ CONFIG, ConfigureProcess },
-		{ DETACH, DetachProcess },
-		{ FORGET, ForgetProcess },
-		{ ADD_HOOK, AddHook },
-		{ REMOVE_HOOKS, RemoveHooks },
-		{ SAVE_HOOKS, SaveHooks },
-		{ SEARCH_FOR_HOOKS, FindHooks },
-		{ SETTINGS, OpenSettings },
-		{ EXTENSIONS, Extensions }
+	sidebarButtons.clear();
+	for (auto [text, icon, slot] : Array<const char*, ButtonAction, void(&)()>{
+		{ ATTACH, ButtonAction::Attach, AttachProcess },
+		{ LAUNCH, ButtonAction::Launch, LaunchProcess },
+		{ CONFIG, ButtonAction::Config, ConfigureProcess },
+		{ DETACH, ButtonAction::Detach, DetachProcess },
+		{ FORGET, ButtonAction::Forget, ForgetProcess },
+		{ ADD_HOOK, ButtonAction::AddHook, AddHook },
+		{ REMOVE_HOOKS, ButtonAction::RemoveHooks, RemoveHooks },
+		{ SAVE_HOOKS, ButtonAction::SaveHooks, SaveHooks },
+		{ SEARCH_FOR_HOOKS, ButtonAction::SearchHooks, FindHooks },
+		{ SETTINGS, ButtonAction::Settings, OpenSettings },
+		{ EXTENSIONS, ButtonAction::Extensions, Extensions }
 	})
 	{
 		auto button = new QPushButton(text, ui.processFrame);
+		button->setIcon(MakeIcon(icon));
+		button->setIconSize({ 20, 20 });
+		button->setToolTip(text);
+		button->setProperty("fullText", text);
+		button->setProperty("iconName", IconResourceName(icon));
+		sidebarButtons.push_back(button);
 		connect(button, &QPushButton::clicked, slot);
 		ui.processLayout->addWidget(button);
 	}
 
 	{
 		auto restartButton = new QPushButton(RESTART_AS_ADMIN, ui.processFrame);
+		restartButton->setIcon(MakeIcon(ButtonAction::RestartAdmin));
+		restartButton->setIconSize({ 20, 20 });
+		restartButton->setToolTip(RESTART_AS_ADMIN);
+		restartButton->setProperty("fullText", QString(RESTART_AS_ADMIN));
+		restartButton->setProperty("iconName", IconResourceName(ButtonAction::RestartAdmin));
 		restartButton->setEnabled(!IsRunningAsAdmin());
+		sidebarButtons.push_back(restartButton);
 		connect(restartButton, &QPushButton::clicked, RestartAsAdmin);
 		ui.processLayout->addWidget(restartButton);
+	}
+
+	{
+		auto collapseBtn = new QPushButton("Collapse", ui.processFrame);
+		collapseBtn->setObjectName("collapseBtn");
+		collapseBtn->setIcon(LoadSvgIcon("collapse", 20));
+		collapseBtn->setIconSize({ 20, 20 });
+		collapseBtn->setToolTip("Collapse");
+		collapseBtn->setProperty("fullText", "Collapse");
+		collapseBtn->setProperty("iconName", "collapse");
+		sidebarButtons.push_back(collapseBtn);
+		QObject::connect(collapseBtn, &QPushButton::clicked, [] { ToggleSidebar(); });
+		ui.processLayout->addWidget(collapseBtn);
 	}
 
 	ui.processLayout->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding));

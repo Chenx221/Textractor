@@ -1,0 +1,18 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="attach">icon/attach.svg</file>
+        <file alias="launch">icon/launch.svg</file>
+        <file alias="configure">icon/configure.svg</file>
+        <file alias="detach">icon/detach.svg</file>
+        <file alias="forget">icon/forget.svg</file>
+        <file alias="add">icon/add.svg</file>
+        <file alias="remove">icon/remove.svg</file>
+        <file alias="save">icon/save.svg</file>
+        <file alias="search">icon/search.svg</file>
+        <file alias="settings">icon/settings.svg</file>
+        <file alias="extension">icon/extension.svg</file>
+        <file alias="admin">icon/admin.svg</file>
+        <file alias="collapse">icon/collapse.svg</file>
+        <file alias="expand">icon/expand.svg</file>
+    </qresource>
+</RCC>
