@@ -29086,7 +29086,96 @@ bool InsertSakanaGLHook() {
 	return true;
 }
 
+// IL2CPP API-based method resolution helper (32bit) (未测试，因为一时间拿不出32位unity il2cpp游戏)
+static uint64_t TryResolveIl2CppMethod(HMODULE gameAssembly,
+	const char* namespaze, const char* className,
+	const char* methodName, int argCount,
+	const char* propertyName)
+{
+	auto pDomainGet = (void*(*)())GetProcAddress(gameAssembly, "il2cpp_domain_get");
+	auto pDomainGetAssemblies = (void**( *)(void*, size_t*))GetProcAddress(gameAssembly, "il2cpp_domain_get_assemblies");
+	auto pAssemblyGetImage = (void*(*)(void*))GetProcAddress(gameAssembly, "il2cpp_assembly_get_image");
+	auto pClassFromName = (void*(*)(void*, const char*, const char*))GetProcAddress(gameAssembly, "il2cpp_class_from_name");
+
+	if (!pDomainGet || !pDomainGetAssemblies || !pAssemblyGetImage || !pClassFromName) {
+		ConsoleOutput("Textractor: IL2CPP API not fully exported, falling back to signature search");
+		return 0;
+	}
+
+	auto pClassGetMethodFromName = (void*(*)(void*, const char*, int))GetProcAddress(gameAssembly, "il2cpp_class_get_method_from_name");
+	auto pClassGetPropertyFromName = (void*(*)(void*, const char*))GetProcAddress(gameAssembly, "il2cpp_class_get_property_from_name");
+	auto pPropertyGetSetMethod = (void*(*)(void*))GetProcAddress(gameAssembly, "il2cpp_property_get_set_method");
+
+	void* domain = pDomainGet();
+	if (!domain) {
+		ConsoleOutput("Textractor: IL2CPP domain_get returned NULL");
+		return 0;
+	}
+
+	size_t assemblyCount = 0;
+	void** assemblies = pDomainGetAssemblies(domain, &assemblyCount);
+	if (!assemblies || assemblyCount == 0) {
+		ConsoleOutput("Textractor: IL2CPP no assemblies found");
+		return 0;
+	}
+
+	for (size_t i = 0; i < assemblyCount; i++) {
+		void* image = pAssemblyGetImage(assemblies[i]);
+		if (!image) continue;
+
+		void* klass = pClassFromName(image, namespaze, className);
+		if (!klass) continue;
+
+		void* methodInfo = nullptr;
+
+		if (propertyName && pClassGetPropertyFromName && pPropertyGetSetMethod) {
+			void* prop = pClassGetPropertyFromName(klass, propertyName);
+			if (prop) methodInfo = pPropertyGetSetMethod(prop);
+		}
+
+		if (!methodInfo && methodName && pClassGetMethodFromName) {
+			methodInfo = pClassGetMethodFromName(klass, methodName, argCount);
+		}
+
+		if (methodInfo) {
+			uint64_t methodPointer = *(uint64_t*)methodInfo;
+			if (methodPointer) {
+				ConsoleOutput("Textractor: IL2CPP API resolved '%s.%s' via assembly #%zu @ 0x%p",
+					className, propertyName ? propertyName : methodName, i, (void*)methodPointer);
+				return methodPointer;
+			}
+		}
+	}
+
+	ConsoleOutput("Textractor: IL2CPP API: class '%s.%s' found but method pointer is NULL", namespaze, className);
+	return 0;
+}
+
 bool InsertUnityIL2TMPHook() {
+	HMODULE module = GetModuleHandleW(L"GameAssembly.dll");
+
+	if (uint64_t apiAddr = TryResolveIl2CppMethod(module, "TMPro", "TMP_Text", nullptr, -1, "text")) {
+		HookParam hp = {};
+		hp.address = apiAddr;
+		hp.type = USING_STRING | USING_UNICODE;
+		hp.offset = 0x8;
+		hp.padding = 0xC;
+		hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+		{
+			auto text = static_cast<LPWSTR>(data);
+			auto len =  static_cast<size_t>(*size);
+			if (len == 0)
+				return false;
+			std::wregex pattern(LR"(<[^>]+?>)" );
+			RegexReplacerW(text, &len, pattern, L"");
+			*size = static_cast<DWORD>(len);
+			return true;
+		};
+		NewHook(hp, "TMPro_set_text");
+		ConsoleOutput("Insert: Unity IL2cpp TMPro Text Hook (API)");
+		return true;
+	}
+
 	// By Chenx221
 
 	// Unity 2022.3.62 x32
@@ -29098,7 +29187,7 @@ bool InsertUnityIL2TMPHook() {
 		0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75, XX, 0x57, 0x8B, 0x7D, XX, 0x80, 0xBE, XX4, XX, 0x75, XX, 0x83, 0xBE
 	};
 	bool flag = false;
-	HMODULE module = GetModuleHandleW(L"GameAssembly.dll");
+	// HMODULE module = GetModuleHandleW(L"GameAssembly.dll");
 	auto [minAddress, maxAddress] = Util::QueryModuleLimits(module);
     auto addr = MemDbg::findBytes(bytes, sizeof(bytes), minAddress, maxAddress);
 	if (addr) {

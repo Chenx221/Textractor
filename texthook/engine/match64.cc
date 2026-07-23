@@ -1750,8 +1750,97 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		return flag;
 	}
 
+	// IL2CPP API-based method resolution helper
+	static uint64_t TryResolveIl2CppMethod(HMODULE gameAssembly,
+		const char* namespaze, const char* className,
+		const char* methodName, int argCount,       // direct method lookup
+		const char* propertyName)                   // property setter lookup (optional)
+	{
+		auto pDomainGet = (void*(*)())GetProcAddress(gameAssembly, "il2cpp_domain_get");
+		auto pDomainGetAssemblies = (void**( *)(void*, size_t*))GetProcAddress(gameAssembly, "il2cpp_domain_get_assemblies");
+		auto pAssemblyGetImage = (void*(*)(void*))GetProcAddress(gameAssembly, "il2cpp_assembly_get_image");
+		auto pClassFromName = (void*(*)(void*, const char*, const char*))GetProcAddress(gameAssembly, "il2cpp_class_from_name");
+
+		if (!pDomainGet || !pDomainGetAssemblies || !pAssemblyGetImage || !pClassFromName) {
+			ConsoleOutput("Textractor: IL2CPP API not fully exported, falling back to signature search");
+			return 0;
+		}
+
+		auto pClassGetMethodFromName = (void*(*)(void*, const char*, int))GetProcAddress(gameAssembly, "il2cpp_class_get_method_from_name");
+		auto pClassGetPropertyFromName = (void*(*)(void*, const char*))GetProcAddress(gameAssembly, "il2cpp_class_get_property_from_name");
+		auto pPropertyGetSetMethod = (void*(*)(void*))GetProcAddress(gameAssembly, "il2cpp_property_get_set_method");
+
+		void* domain = pDomainGet();
+		if (!domain) {
+			ConsoleOutput("Textractor: IL2CPP domain_get returned NULL");
+			return 0;
+		}
+
+		size_t assemblyCount = 0;
+		void** assemblies = pDomainGetAssemblies(domain, &assemblyCount);
+		if (!assemblies || assemblyCount == 0) {
+			ConsoleOutput("Textractor: IL2CPP no assemblies found");
+			return 0;
+		}
+
+		for (size_t i = 0; i < assemblyCount; i++) {
+			void* image = pAssemblyGetImage(assemblies[i]);
+			if (!image) continue;
+
+			void* klass = pClassFromName(image, namespaze, className);
+			if (!klass) continue;
+
+			void* methodInfo = nullptr;
+
+			if (propertyName && pClassGetPropertyFromName && pPropertyGetSetMethod) {
+				void* prop = pClassGetPropertyFromName(klass, propertyName);
+				if (prop) {
+					methodInfo = pPropertyGetSetMethod(prop);
+				}
+			}
+
+			if (!methodInfo && methodName && pClassGetMethodFromName) {
+				methodInfo = pClassGetMethodFromName(klass, methodName, argCount);
+			}
+
+			if (methodInfo) {
+				uint64_t methodPointer = *(uint64_t*)methodInfo;
+				if (methodPointer) {
+					ConsoleOutput("Textractor: IL2CPP API resolved '%s.%s' via assembly #%zu @ 0x%p",
+						className, propertyName ? propertyName : methodName, i, (void*)methodPointer);
+					return methodPointer;
+				}
+			}
+		}
+
+		ConsoleOutput("Textractor: IL2CPP API: class '%s.%s' found but method pointer is NULL", namespaze, className);
+		return 0;
+	}
+
 	// TMPro_TMP_Text__set_text
 	bool InsertUnityIl2TMPTextHook(HMODULE module) {
+		if (uint64_t apiAddr = TryResolveIl2CppMethod(module, "TMPro", "TMP_Text", nullptr, -1, "text")) {
+			HookParam hp = {};
+			hp.address = apiAddr;
+			hp.type = USING_STRING | USING_UNICODE;
+			hp.offset = pusha_rdx_off - 4;
+			hp.padding = 0x14;
+			hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+			{
+				auto text = static_cast<LPWSTR>(data);
+				auto len =  static_cast<size_t>(*size);
+				if (len == 0)
+					return false;
+				std::wregex pattern(LR"(<[^>]+?>)" );
+				RegexReplacerW(text, &len, pattern, L"");
+				*size = static_cast<DWORD>(len);
+				return true;
+			};
+			NewHook(hp, "TMPro_set_text");
+			ConsoleOutput("Insert: Unity IL2cpp TMPro Text Hook (API)");
+			return true;
+		}
+
 		const BYTE bytes[] = {
 			0xCC, 0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x20, 0x80, 0xB9, 0xE8, 0x00, 0x00, 0x00, 0x00
 		};
@@ -1812,6 +1901,28 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 	}
 	// TMPro_TMP_Text__SetText
 	bool InsertUnityIl2TMPSetTextHook(HMODULE module) {
+		if (uint64_t apiAddr = TryResolveIl2CppMethod(module, "TMPro", "TMP_Text", "SetText", -1, nullptr)) {
+			HookParam hp = {};
+			hp.address = apiAddr;
+			hp.type = USING_STRING | USING_UNICODE;
+			hp.offset = pusha_rdx_off - 4;
+			hp.padding = 0x14;
+			hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+			{
+				auto text = static_cast<LPWSTR>(data);
+				auto len =  static_cast<size_t>(*size);
+				if (len == 0)
+					return false;
+				std::wregex pattern(LR"(<[^>]+?>)" );
+				RegexReplacerW(text, &len, pattern, L"");
+				*size = static_cast<DWORD>(len);
+				return true;
+			};
+			NewHook(hp, "TMPro_SetText");
+			ConsoleOutput("Insert: Unity IL2cpp TMPro SetText Hook (API)");
+			return true;
+		}
+
 		const BYTE bytes[] = {
 			0xCC, 0x48, 0x89, 0x5C, 0x24, 0x08, 0x57, 0x48, 0x83, 0xEC, 0x30, 0x48, 0x8B, 0xFA, 0x48, 0x8B, 0xD9, 0x48, 0x85, 0xD2, 0x75
 		};
