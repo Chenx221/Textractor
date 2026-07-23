@@ -236,6 +236,8 @@ const char* OUTLINE_COLOR = u8"Outline color";
 const char* OUTLINE_SIZE = u8"Outline size";
 const char* OUTLINE_SIZE_INFO = u8"Size in pixels (recommended to stay below 20% of the font size)";
 const char* FONT = u8"Font";
+const char* CLEAR_CURRENT_THREAD = u8"Clear";
+const char* SEARCH_GOOGLE = u8"Search on Google";
 const char* TIMER_HIDE_TEXT = u8"Timer hide text";
 const char* TEXT_TIMEOUT = u8"Timeout (msec, 0=disabled)";
 const char* TEXT_TIMEOUT_ADD_PER_CHAR = u8"Additional timeout per char (msec)";

@@ -186,6 +186,8 @@ OUTLINE_COLOR = u8"文字描边颜色";
 OUTLINE_SIZE = u8"文字描边大小";
 OUTLINE_SIZE_INFO = u8"描边的单位为px (建议保持在字体大小的20%以下)";
 FONT = u8"字体";
+CLEAR_CURRENT_THREAD = u8"清空";
+SEARCH_GOOGLE = u8"使用 Google 搜索";
 TIMER_HIDE_TEXT = u8"定时隐藏文本";
 TEXT_TIMEOUT = u8"文本停留时间 (毫秒, 0=禁用)";
 TEXT_TIMEOUT_ADD_PER_CHAR = u8"每个字符额外增加的显示时长 (毫秒)";
