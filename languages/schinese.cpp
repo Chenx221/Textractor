@@ -299,3 +299,5 @@ AI_MODEL = u8"AI 模型";
 AI_PROVIDER = u8"AI 提供商";
 CUSTOM_TRANSLATE_TO = u8"自定义目标语言";
 CUSTOM_TRANSLATE_FROM = u8"自定义源语言";
+AI_THINKING = u8"思考模式";
+AI_REASONING_EFFORT = u8"思考强度";

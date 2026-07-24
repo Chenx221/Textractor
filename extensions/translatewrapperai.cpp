@@ -29,6 +29,8 @@ extern const char* AI_MODEL;
 extern const char* AI_PROVIDER;
 extern const char* CUSTOM_TRANSLATE_TO;
 extern const char* CUSTOM_TRANSLATE_FROM;
+extern const char* AI_THINKING;
+extern const char* AI_REASONING_EFFORT;
 extern const wchar_t* SENTENCE_TOO_LARGE_TO_TRANS;
 extern const wchar_t* TRANSLATION_ERROR;
 extern const wchar_t* TOO_MANY_TRANS_REQUESTS;
@@ -37,6 +39,7 @@ extern const char* TRANSLATION_PROVIDER;
 extern const char* GET_API_KEY_FROM;
 extern const QStringList languagesTo, languagesFrom;
 extern const QStringList aiProviders, aiModels;
+extern const QStringList reasoningEfforts;
 extern const std::unordered_map<std::wstring, std::wstring> providerApiHosts;
 extern const std::unordered_map<std::wstring, std::wstring> providerApiPaths;
 extern const wchar_t* AI_DEFAULT_PROVIDER;
@@ -47,6 +50,7 @@ extern const wchar_t* AI_DEFAULT_SYSTEM_PROMPT;
 extern const double AI_DEFAULT_TEMPERATURE;
 extern bool translateSelectedOnly, useRateLimiter, rateLimitSelected, useCache, useFilter;
 extern bool includePreviousContext;
+extern bool enableThinking;
 extern int tokenCount, rateLimitTimespan, maxSentenceSize;
 std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationParam tlp);
 
@@ -70,6 +74,8 @@ constexpr auto KEY_AI_TEMPERATURE = u8"AI temperature";
 constexpr auto KEY_CUSTOM_TRANSLATE_TO   = u8"Custom translate to";
 constexpr auto KEY_CUSTOM_TRANSLATE_FROM = u8"Custom translate from";
 constexpr auto KEY_INCLUDE_PREVIOUS_CONTEXT = u8"Include previous sentences";
+constexpr auto KEY_AI_THINKING = u8"AI thinking mode";
+constexpr auto KEY_AI_REASONING_EFFORT = u8"AI reasoning effort";
 
 enum class Language;
 extern Language CURRENT_LANGUAGE;
@@ -255,6 +261,29 @@ public:
 		SaveTemperature(temperature);
 		connect(temperatureSpin, qOverload<double>(&QDoubleSpinBox::valueChanged), this, &Window::SaveTemperature);
 		display->addRow(AI_TEMPERATURE, temperatureSpin);
+
+		auto thinkingCheckBox = new QCheckBox(this);
+		enableThinking = settings.value(KEY_AI_THINKING, enableThinking).toBool();
+		thinkingCheckBox->setChecked(enableThinking);
+		display->addRow(AI_THINKING, thinkingCheckBox);
+
+		auto reasoningEffortCombo = new QComboBox(this);
+		reasoningEffortCombo->addItems(reasoningEfforts);
+		QString savedEffort = settings.value(KEY_AI_REASONING_EFFORT, "high").toString();
+		int effortIdx = reasoningEffortCombo->findText(savedEffort);
+		if (effortIdx >= 0) reasoningEffortCombo->setCurrentIndex(effortIdx);
+		reasoningEffortCombo->setEnabled(enableThinking);
+		tlp->reasoningEffort = S(reasoningEffortCombo->currentText());
+		display->addRow(AI_REASONING_EFFORT, reasoningEffortCombo);
+
+		connect(thinkingCheckBox, &QCheckBox::toggled, this, [this, reasoningEffortCombo](bool checked) {
+			settings.setValue(KEY_AI_THINKING, enableThinking = checked);
+			tlp->enableThinking = checked;
+			reasoningEffortCombo->setEnabled(checked);
+		});
+		connect(reasoningEffortCombo, &QComboBox::currentTextChanged, this, [this](const QString& effort) {
+			settings.setValue(KEY_AI_REASONING_EFFORT, S(tlp->reasoningEffort = S(effort)));
+		});
 
 		for (auto [value, label, keylabel] : Array<bool&, const char*, const char*>{
 			{ includePreviousContext, INCLUDE_PREVIOUS_CONTEXT, KEY_INCLUDE_PREVIOUS_CONTEXT },
@@ -504,6 +533,7 @@ bool ProcessSentence(std::wstring& sentence, SentenceInfo sentenceInfo) {
 		if (rateLimiter.Request() || !useRateLimiter || (!rateLimitSelected && sentenceInfo["current select"]))
 		{
 			auto requestParam = tlp.Copy();
+			requestParam.enableThinking = enableThinking;
 			if (includePreviousContext)
 			{
 				auto [prev1, prev2] = GetPreviousSentences(threadId);

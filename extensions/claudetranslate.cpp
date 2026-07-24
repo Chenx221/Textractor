@@ -57,7 +57,9 @@ extern const std::unordered_map<std::wstring, std::wstring> providerApiPaths{
 };
 
 bool translateSelectedOnly = true, useRateLimiter = true, rateLimitSelected = false, useCache = true, useFilter = true;
-bool includePreviousContext = false;
+bool includePreviousContext = false, enableThinking = false;
+
+extern const QStringList reasoningEfforts{};
 int tokenCount = 20, rateLimitTimespan = 1000, maxSentenceSize = 2000;
 
 namespace

@@ -17,9 +17,12 @@ extern const QStringList aiProviders{
 
 extern const QStringList aiModels{
 	"deepseek-v4-flash",
-	"deepseek-v4-pro",
-	"deepseek-chat",
-	"deepseek-reasoner"
+	"deepseek-v4-pro"
+};
+
+extern const QStringList reasoningEfforts{
+	"high",
+	"max"
 };
 
 const wchar_t* AI_DEFAULT_PROVIDER = L"DeepSeek";
@@ -59,7 +62,7 @@ extern const std::unordered_map<std::wstring, std::wstring> providerApiPaths{
 };
 
 bool translateSelectedOnly = true, useRateLimiter = true, rateLimitSelected = false, useCache = true, useFilter = true;
-bool includePreviousContext = false;
+bool includePreviousContext = false, enableThinking = false;
 int tokenCount = 20, rateLimitTimespan = 1000, maxSentenceSize = 2000;
 
 namespace
@@ -114,12 +117,22 @@ std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationPar
 
 	json requestBody{
 		{"model", WideStringToString(tlp.model)},
-		{"temperature", tlp.temperature > 0 ? tlp.temperature : AI_DEFAULT_TEMPERATURE},
 		{"messages", json::array({
 			{{"role", "system"}, {"content", WideStringToString(tlp.systemPrompt)}},
 			{{"role", "user"}, {"content", BuildUserPrompt(text, tlp)}}
 		})}
 	};
+
+	if (tlp.enableThinking)
+	{
+		requestBody["thinking"] = {{"type", "enabled"}};
+		if (!tlp.reasoningEffort.empty())
+			requestBody["reasoning_effort"] = WideStringToString(tlp.reasoningEffort);
+	}
+	else
+	{
+		requestBody["temperature"] = tlp.temperature > 0 ? tlp.temperature : AI_DEFAULT_TEMPERATURE;
+	}
 
 	HttpRequest httpRequest{
 		L"Mozilla/5.0 Textractor",

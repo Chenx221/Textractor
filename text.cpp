@@ -347,6 +347,8 @@ const char* AI_MODEL = u8"AI model";
 const char* AI_PROVIDER = u8"AI provider";
 const char* CUSTOM_TRANSLATE_TO = u8"Custom translate to";
 const char* CUSTOM_TRANSLATE_FROM = u8"Custom translate from";
+const char* AI_THINKING = u8"AI thinking mode";
+const char* AI_REASONING_EFFORT = u8"AI reasoning effort";
 
 void Localize()
 {
