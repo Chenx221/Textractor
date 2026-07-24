@@ -131,6 +131,7 @@ std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationPar
 	}
 	else
 	{
+		requestBody["thinking"] = {{"type", "disabled"}};
 		requestBody["temperature"] = tlp.temperature > 0 ? tlp.temperature : AI_DEFAULT_TEMPERATURE;
 	}
 
