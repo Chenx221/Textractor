@@ -4823,6 +4823,58 @@ bool InsertSiglus6Hook(){
   return true;
 }
 
+bool InsertSiglus7Hook() {
+  // by Chenx221
+  // tnm_command_proc_object
+  // case ELM_OBJECT_CREATE
+  // sprite font only!
+  // 纯整活
+
+  // https://vndb.org/v63318 モザイクの天使
+  const BYTE bytes[] = {
+    0x8B, 0x4C, 0x24, XX,
+    0x8B, 0x41, XX,
+    0x8B, 0xCF,
+    0xFF, 0xB0, XX4,
+    0xE8, XX4 // hook here
+  };
+
+  ULONG range = max(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:Siglus7: pattern not found");
+    return false;
+  }
+  HookParam hp = {};
+  hp.address = addr + 0xF;
+  hp.offset = pusha_esp_off - 4;
+  hp.type = USING_UNICODE | NO_CONTEXT;
+  hp.text_fun = [](DWORD esp_base, HookParam*, BYTE, DWORD *data, DWORD *split, DWORD* len)
+  {
+    wchar_t *name = *(wchar_t **)(esp_base + 0x68);
+    if (!name) return;
+    if (wcsncmp(name, L"_moji", 5) != 0) return;
+
+    // Find last underscore to extract the trailing number
+    const wchar_t *suffix = wcsrchr(name, L'_');
+    if (!suffix) return;
+    suffix++;
+    wchar_t *end = nullptr;
+    int A = static_cast<int>(wcstol(suffix, &end, 10));
+    if (end == suffix) return;
+    int B = *(int *)(esp_base);
+    static wchar_t ch;
+    ch = static_cast<wchar_t>(A * 0x1B9 + B);
+
+    *data = reinterpret_cast<DWORD>(&ch);
+    *len = 2;
+  };
+  ConsoleOutput("Textractor: INSERT Siglus7");
+  NewHook(hp, "SiglusEngine7");
+
+  return true;
+}
+
 } // unnamed namespace
 
 // jichi 8/17/2013: Insert old first. As the pattern could also be found in the old engine.
@@ -4835,6 +4887,7 @@ bool InsertSiglusHook()
   ok = InsertSiglus4Hook() || ok;
   ok = InsertSiglus5Hook() || ok;
   ok = InsertSiglus6Hook() || ok;
+  ok = InsertSiglus7Hook() || ok;
   return ok;
 }
 
