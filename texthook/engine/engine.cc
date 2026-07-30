@@ -4851,8 +4851,14 @@ bool InsertSiglus7Hook() {
   hp.type = USING_UNICODE | NO_CONTEXT;
   hp.text_fun = [](DWORD esp_base, HookParam*, BYTE, DWORD *data, DWORD *split, DWORD* len)
   {
-    wchar_t *name = *(wchar_t **)(esp_base + 0x68);
-    if (!name) return;
+    int capacity = *(int *)(esp_base + 0x68 + 0x14);
+    wchar_t *name;
+    if (capacity < 8) {
+      name = (wchar_t *)(esp_base + 0x68);
+    } else {
+      name = *(wchar_t **)(esp_base + 0x68);
+      if (!name) return;
+    }
     if (wcsncmp(name, L"_moji", 5) != 0) return;
 
     // Find last underscore to extract the trailing number
