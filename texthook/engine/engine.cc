@@ -4769,6 +4769,60 @@ bool InsertSiglus5Hook()
   return true;
 }
 
+bool InsertSiglus6Hook(){
+  // by Chenx221
+  // tnm_msg_proc_msg_back_add_msg
+
+  // https://vndb.org/v63318 モザイクの天使
+  const BYTE bytes[] = {
+    0x55, 
+    0x8B, 0xEC, 
+    0x6A, XX,
+    0x68, XX4,
+    0x64, 0xA1, XX4,
+    0x50,
+    0x83, 0xEC, XX,
+    0x53,
+    0x56,
+    0x57,
+    0xA1, XX4,
+    0x33, 0xC5,
+    0x50,
+    0x8D, 0x45, XX,
+    0x64, 0xA3, XX4,
+    0xFF, 0x75, XX
+  };
+
+  ULONG range = max(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:Siglus6: pattern not found");
+    return false;
+  }
+  HookParam hp = {};
+  hp.address = addr;
+  hp.offset = pusha_ecx_off - 4;
+  hp.type = USING_UNICODE | USING_STRING;
+  hp.text_fun = [](DWORD esp_base, HookParam*, BYTE, DWORD *data, DWORD *split, DWORD* len)
+  {
+    DWORD ptr = *(DWORD*)(esp_base + pusha_ecx_off - 4);
+    if (!ptr) return;
+    BYTE* base = reinterpret_cast<BYTE*>(ptr);
+    DWORD current_len = *(DWORD*)(base + 0x10);
+    DWORD current_cap = *(DWORD*)(base + 0x14);
+    *len = current_len * 2;
+    if (current_cap >= 0x8) {
+      *data = *(DWORD*)(base);
+    }else {
+      *data = (DWORD)(base);
+    }
+  };
+  ConsoleOutput("Textractor: INSERT Siglus6");
+  NewHook(hp, "SiglusEngine6");
+
+  return true;
+}
+
 } // unnamed namespace
 
 // jichi 8/17/2013: Insert old first. As the pattern could also be found in the old engine.
@@ -4780,6 +4834,7 @@ bool InsertSiglusHook()
   ok = InsertSiglus3Hook() || ok;
   ok = InsertSiglus4Hook() || ok;
   ok = InsertSiglus5Hook() || ok;
+  ok = InsertSiglus6Hook() || ok;
   return ok;
 }
 
