@@ -2530,6 +2530,47 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			return true;
 		}
 
+		// Milftoon - MilfLand
+		const BYTE bytes1[] = {
+			0x48, 0x8D, 0x4B, XX, 0x41, 0xB8, XX4, 0x48, 0x8D, 0x55, XX, 0xE8, XX4, 0x48, 0x8B, 0x78
+		};
+
+		for (auto addr : Util::SearchMemory(bytes1, sizeof(bytes1), PAGE_EXECUTE, processStartAddress, processStartAddress + range)) {
+			HookParam hp = {};
+			hp.address = addr + 0x13;
+			hp.offset = pusha_rax_off - 4;
+			hp.type = USING_UNICODE | USING_STRING | NO_CONTEXT;
+			hp.text_fun = [](uint64_t rsp_base, HookParam* pHp, BYTE, uint64_t* data, uintptr_t* split, DWORD* count) {
+				uint64_t rax = regof(rax, rsp_base);
+				uint64_t length = *(uint64_t*)(rax + 0x10);
+				uint64_t capacity = *(uint64_t*)(rax + 0x18);
+				if (capacity >= 8) {
+					*data = *(uint64_t*)rax;
+				} else {
+					*data = rax;
+				}
+				*count = static_cast<DWORD>(length*2);
+			};
+			hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+			{
+				auto text = reinterpret_cast<LPWSTR>(data);
+				auto len =  static_cast<size_t>(*size);
+
+				if (len == 0)
+					return false;
+				WideStringCharReplacer(text,&len,L"<br/>",5,L'\n');
+				WideStringFilter(text, &len, L"<p>", 3);
+
+				std::wregex pattern(LR"(<[^>]+>)");
+				RegexReplacerW(text, &len, pattern, L"");
+				*size = static_cast<DWORD>(len);
+				return true;
+			};
+			ConsoleOutput("vnreng: INSERT Visionaire Player Hook");
+			NewHook(hp, "VisionairePlayer");
+			return true;
+		}
+
 		ConsoleOutput("Textractor:Visionaire Player: pattern not found");
 		return false;
 	}
