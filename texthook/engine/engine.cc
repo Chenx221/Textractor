@@ -17282,9 +17282,41 @@ const BYTE bytes[] = {
   return true;
 }
 
+bool InsertOldPONScripterHook2()
+{
+  // by Chenx221
+  // https://steamdb.info/app/406550/
+  const BYTE bytes[] = {
+      0x55, 0x83, 0xC1, XX, 0x89, 0xE5, 0x57, 0x56, 0x53, 0x83, 0xEC, XX, 0x8B, 0x45, XX4,
+      0x89, 0x44, 0x24, XX, 0x8B, 0x45, XX, 0x89, 0x44, 0x24, XX, 0xE8, XX4, 0x83, 0xF8,
+      XX, 0x74, XX, 0x8D, 0x65, XX, 0x5B, 0x5E, 0x5F, 0x5D, 0xC2, XX2, 0x8D, 0x45
+  };
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (!addr) {
+    ConsoleOutput("vnreng:OldPONScripter2: pattern not found");
+    return false;
+  }
+
+  HookParam hp = {};
+  hp.address = addr;
+  hp.offset = 0x4;
+  hp.type = USING_UTF8;
+	hp.text_fun = [](DWORD esp_base, HookParam*, BYTE, DWORD* data, DWORD* split, DWORD* len)
+	{
+		*data = argof(1, esp_base);
+		*len = argof(2, esp_base);
+	};
+  ConsoleOutput("vnreng: INSERT OldPONScripter2");
+  NewHook(hp, "OldPONScripter2");
+  return true;
+}
+
 bool InsertPONScripterHooks()
 {
-  bool ok = InsertPONScripterEngHook() && InsertPONScripterJapHook() || InsertOldPONScripterHook() ;
+  bool ok = InsertPONScripterEngHook() && InsertPONScripterJapHook() || InsertOldPONScripterHook();
+  ok |= InsertOldPONScripterHook2();
   return  ok || InsertPONScripterHook(); // If a language hook is missing, the original code is executed
 }
 
