@@ -3,8 +3,6 @@
 #include "network.h"
 
 extern const wchar_t* TRANSLATION_ERROR;
-extern const wchar_t* BING_TOKEN_RESPONSE_EMPTY;
-extern const wchar_t* BING_COULD_NOT_ACQUIRE_TOKEN;
 
 const char* TRANSLATION_PROVIDER = "Bing Translate2";
 const char* GET_API_KEY_FROM = "https://www.microsoft.com/en-us/translator/business/trial/#get-started";
@@ -289,13 +287,6 @@ extern const std::unordered_map<std::wstring, std::wstring> codes
 bool translateSelectedOnly = false, useRateLimiter = true, rateLimitSelected = false, useCache = true, useFilter = true;
 int tokenCount = 30, rateLimitTimespan = 60000, maxSentenceSize = 1000;
 
-static std::atomic<long long> tokenFetchTime = 0;
-
-bool isTokenExpired() {
-	long long currentTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	return tokenFetchTime + 9 * 60 <= currentTime;
-}
-
 std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationParam tlp)
 {
 	if (!tlp.authKey.empty())
@@ -314,30 +305,14 @@ std::pair<bool, std::wstring> Translate(const std::wstring& text, TranslationPar
 		else return { false, FormatString(L"%s (code=%u)", TRANSLATION_ERROR, httpRequest.errorCode) };
 	}
 
-	static std::atomic<int> i = 0;
-	static Synchronized<std::wstring> token;
-	if (token->empty() || isTokenExpired()) if (HttpRequest httpRequest{ L"Mozilla/5.0 Textractor", L"edge.microsoft.com", L"GET", L"/translate/auth" }) // Edge browser: ???
-	{
-		if (!httpRequest.response.empty()) {
-			token->assign(httpRequest.response);
-			tokenFetchTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-		}
-		else {
-			return { false, FormatString(L"%s: %s", TRANSLATION_ERROR, BING_TOKEN_RESPONSE_EMPTY) };
-		}
-	}
-	else {
-		return { false, FormatString(L"%s: %s", TRANSLATION_ERROR, BING_COULD_NOT_ACQUIRE_TOKEN) };
-	}
-
-	std::wstring translateFromComponent = tlp.translateFrom == L"?" ? L"" : L"&from=" + codes.at(tlp.translateFrom);
+	std::wstring translateFromComponent = tlp.translateFrom == L"?" ? L"" : codes.at(tlp.translateFrom);
 	if (HttpRequest httpRequest{
-		L"Mozilla/5.0 Textractor",
-		L"api.cognitive.microsofttranslator.com",
+		L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0 Textractor",
+		L"edge.microsoft.com",
 		L"POST",
-		FormatString(L"/translate?api-version=3.0&to=%s%s", codes.at(tlp.translateTo), translateFromComponent).c_str(),
-		FormatString(R"([{"text":"%s"}])", JSON::Escape(WideStringToString(text))),
-		FormatString(L"Content-Type: application/json; charset=UTF-8\r\nAuthorization: Bearer %s", token.Copy()).c_str()
+		FormatString(L"/translate/translatetext?from=%s&to=%s&isEnterpriseClient=false", translateFromComponent, codes.at(tlp.translateTo)).c_str(),
+		FormatString(R"(["%s"])", JSON::Escape(WideStringToString(text))),
+		L"Content-Type: application/json"
 	})
 		if (auto translation = Copy(JSON::Parse(httpRequest.response)[0][L"translations"][0][L"text"].String())) return { true, translation.value() };
 		else return { false, FormatString(L"%s: %s", TRANSLATION_ERROR, httpRequest.response) };
