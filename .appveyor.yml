@@ -49,15 +49,15 @@ after_build:
   - copy C:\Textractor\GUI\icon\LICENSE-icons.txt C:\textractor-build\x86\LICENSE-icons.txt
   - copy C:\Textractor\GUI\icon\LICENSE-icons.txt C:\textractor-build\x64\LICENSE-icons.txt
   - copy C:\Textractor\INSTALL_THIS_UNICODE_FONT.ttf C:\textractor-build\INSTALL_THIS_UNICODE_FONT.ttf
-  - 7z a %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip C:\textractor-build\*
-  - appveyor PushArtifact %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip
+  - 7z a -mx9 %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.7z C:\textractor-build\*
+  - appveyor PushArtifact %fprefix%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.7z
   - mkdir C:\texthook
   - mkdir C:\texthook\x86
   - mkdir C:\texthook\x64
   - copy C:\Textractor\builds\Release_x86\texthook.dll C:\texthook\x86\texthook.dll
   - copy C:\Textractor\builds\Release_x64\texthook.dll C:\texthook\x64\texthook.dll
-  - 7z a %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip C:\texthook\*
-  - appveyor PushArtifact %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.zip
+  - 7z a -mx9 %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.7z C:\texthook\*
+  - appveyor PushArtifact %fprefix2%-Alpha%APPVEYOR_BUILD_NUMBER%-%BUILD_DATE%.7z
 
 notifications:
 - provider: Email
