@@ -865,6 +865,45 @@ namespace
 				DescribeWinHttpError(httpRequest.errorCode).c_str(), httpRequest.errorCode));
 		}
 	}
+
+	std::optional<DWORD> ParseProcessId(const std::wstring& text)
+	{
+		auto isDigit = [](wchar_t character) { return character >= L'0' && character <= L'9'; };
+		auto isHexDigit = [&](wchar_t character) { return isDigit(character) || (character >= L'a' && character <= L'f') || (character >= L'A' && character <= L'F'); };
+		size_t offset = 0;
+		int base = 10;
+		if (text.size() > 2 && text[0] == L'0' && (text[1] == L'x' || text[1] == L'X')) { offset = 2; base = 16; }
+		if (offset >= text.size()) return std::nullopt;
+		for (size_t i = offset; i < text.size(); ++i)
+			if (base == 16 ? !isHexDigit(text[i]) : !isDigit(text[i])) return std::nullopt;
+		unsigned long long value = wcstoull(text.c_str() + offset, nullptr, base);
+		if (value == 0 || value > 0xFFFFFFFFull) return std::nullopt;
+		return (DWORD)value;
+	}
+
+	bool MatchesProcessPath(const std::wstring& processPath, const std::wstring& target)
+	{
+		std::filesystem::path path(processPath);
+		std::wstring fileName = path.filename().wstring();
+		if (_wcsicmp(fileName.c_str(), target.c_str()) == 0) return true;
+		if (std::filesystem::path(target).extension().empty() && _wcsicmp(path.stem().wstring().c_str(), target.c_str()) == 0) return true;
+		if (target.size() <= processPath.size())
+		{
+			size_t offset = processPath.size() - target.size();
+			if ((offset == 0 || processPath[offset - 1] == L'\\') && _wcsicmp(processPath.c_str() + offset, target.c_str()) == 0) return true;
+		}
+		return false;
+	}
+
+	void ShowUsageInParentConsole()
+	{
+		if (!AttachConsole(ATTACH_PARENT_PROCESS)) return;
+		HANDLE output = GetStdHandle(STD_OUTPUT_HANDLE);
+		WriteConsoleW(output, L"\n", 1, DUMMY, NULL);
+		WriteConsoleW(output, CL_OPTIONS, (DWORD)wcslen(CL_OPTIONS), DUMMY, NULL);
+		WriteConsoleW(output, L"\n", 1, DUMMY, NULL);
+		FreeConsole();
+	}
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -933,17 +972,37 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 	Host::AddConsoleOutput(ABOUT);
 	if (checkUpdate) CheckForUpdates();
 
-	AttachConsole(ATTACH_PARENT_PROCESS);
-	WriteConsoleW(GetStdHandle(STD_OUTPUT_HANDLE), CL_OPTIONS, wcslen(CL_OPTIONS), DUMMY, NULL);
-	auto processes = GetAllProcesses();
 	int argc;
 	std::unique_ptr<LPWSTR[], Functor<LocalFree>> argv(CommandLineToArgvW(GetCommandLineW(), &argc));
 	for (int i = 0; i < argc; ++i)
-		if (std::wstring arg = argv[i]; arg[0] == L'/' || arg[0] == L'-')
-			if (arg[1] == L'p' || arg[1] == L'P')
-				if (DWORD processId = wcstoul(arg.substr(2).c_str(), nullptr, 0)) Host::InjectProcess(processId);
-				else for (auto [processId, processName] : processes)
-					if (processName.value_or(L"").find(L"\\" + arg.substr(2)) != std::string::npos) Host::InjectProcess(processId);
+	{
+		std::wstring arg = argv[i];
+		if (arg.size() < 2 || (arg[0] != L'/' && arg[0] != L'-') || (arg[1] != L'p' && arg[1] != L'P')) continue;
+		std::wstring target = arg.substr(2);
+		if (target.empty())
+		{
+			Host::AddConsoleOutput(CL_OPTIONS);
+			ShowUsageInParentConsole();
+			continue;
+		}
+		if (auto processId = ParseProcessId(target))
+		{
+			Host::InjectProcess(processId.value());
+			continue;
+		}
+		bool matched = false;
+		for (auto [candidateId, processName] : GetAllProcesses()) // enumerated only when a name is given
+			if (processName && MatchesProcessPath(processName.value(), target))
+			{
+				Host::InjectProcess(candidateId);
+				matched = true;
+			}
+		if (!matched)
+		{
+			Host::AddConsoleOutput(CL_OPTIONS);
+			ShowUsageInParentConsole();
+		}
+	}
 
 	std::thread([] { for (; ; Sleep(10000)) AttachSavedProcesses(); }).detach();
 }
