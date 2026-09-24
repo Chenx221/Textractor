@@ -760,6 +760,7 @@ namespace
 
 	void CopyUnlessMouseDown()
 	{
+		if (current && current->tp == Host::clipboard) return;
 		if (!(QApplication::mouseButtons() & Qt::LeftButton)) ui.textOutput->copy();
 	}
 
@@ -910,7 +911,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
 	connect(ui.processCombo, qOverload<int>(&QComboBox::currentIndexChanged), [] { selectedProcessId = ui.processCombo->currentText().split(":")[0].toULong(nullptr, 16); });
 	connect(ui.ttCombo, qOverload<int>(&QComboBox::activated), this, ViewThread);
-	connect(ui.textOutput, &QPlainTextEdit::selectionChanged, this, CopyUnlessMouseDown);
+	// connect(ui.textOutput, &QPlainTextEdit::selectionChanged, this, CopyUnlessMouseDown);
 	connect(ui.textOutput, &QPlainTextEdit::customContextMenuRequested, this, OutputContextMenu);
 
 	if (settings.contains(WINDOW) && QApplication::screenAt(settings.value(WINDOW).toRect().center())) setGeometry(settings.value(WINDOW).toRect());
