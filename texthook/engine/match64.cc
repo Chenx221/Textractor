@@ -2162,6 +2162,40 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			}
 		}
 
+		// SrRichTextSubstringHelper.StringExt.SrRichTextLengthZenHan
+		// 偽りのアリス -Retold Tale- Demo
+		if (Util::CheckFile(L"ItsualiRetoldTrial.exe") && Util::CheckFile(L"ItsualiRetoldTrial_Data") || 
+		Util::CheckFile(L"ItsualiRetold.exe") && Util::CheckFile(L"ItsualiRetold_Data")) {
+			if (uint64_t apiAddr = TryResolveIl2CppMethod(module, "SrRichTextSubstringHelper", "StringExt", "SrRichTextLengthZenHan", -1, nullptr)) {
+				HookParam hp = {};
+				hp.address = apiAddr;
+				hp.type = USING_STRING | USING_UNICODE | NO_CONTEXT;
+				hp.offset = pusha_rcx_off - 4;
+				hp.padding = 0x14;
+				hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+				{
+					static std::wstring prevText;
+					auto text = static_cast<LPWSTR>(data);
+					auto len =  static_cast<size_t>(*size);
+					if (len == 0)
+						return false;
+					static const std::wregex tagPattern(LR"(<[^>]*>)");
+					RegexReplacerW(text, &len, tagPattern, L"");
+					if (len == 0)
+						return false;
+					size_t charLen = len / sizeof(wchar_t);
+					if (prevText.length() == charLen && prevText.compare(0, prevText.length(), text, charLen) == 0)
+						return false;
+					prevText.assign(text, charLen);
+					*size = static_cast<DWORD>(len);
+					return true;
+				};
+				NewHook(hp, "Unity_IL2cpp_SP_ItsualiRetold");
+				ConsoleOutput("Insert: Unity IL2cpp Game SP Hook (ItsualiRetold)");
+				return true;
+			}
+		}
+
 		return false;
 	}
 
