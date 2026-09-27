@@ -1,0 +1,167 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - x221Mod
+      - x221Mod_qt6
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  VARIANT: ''
+  QT_VERSION: '5.13.2'
+
+jobs:
+  build:
+    name: Build (${{ matrix.name }})
+    runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: v142 (VS2019 toolset)
+            toolset: v142
+            suffix: ''
+
+          - name: v143 (VS2022)
+            toolset: v143
+            suffix: _msvc22
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          path: Textractor
+
+      - name: Compute version
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $base = $env:GITHUB_REF_NAME -replace '^v', ''
+          } else {
+            $base = Get-Date -Format 'yyMMdd'
+          }
+          $version = $base + $env:VARIANT + '${{ matrix.suffix }}'
+          "APP_VERSION=$version" >> $env:GITHUB_ENV
+          "version=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "APP_VERSION = $version"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: C:\Qt
+          key: qt-${{ env.QT_VERSION }}-msvc2017-v1
+
+      - name: Install aqtinstall & Qt ${{ env.QT_VERSION }}
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check aqtinstall
+          # Win32 (msvc2017)
+          python -m aqt install-qt windows desktop $env:QT_VERSION win32_msvc2017 --outputdir C:\Qt
+          # x64 (msvc2017_64)
+          python -m aqt install-qt windows desktop $env:QT_VERSION win64_msvc2017_64 --outputdir C:\Qt
+
+      - name: Copy Translation Files
+        shell: pwsh
+        run: |
+          $langs = @('zh_CN', 'pt_BR', 'tr')
+          foreach ($qtDir in @("C:\Qt\$env:QT_VERSION\msvc2017", "C:\Qt\$env:QT_VERSION\msvc2017_64")) {
+            foreach ($lang in $langs) {
+              Copy-Item "$env:GITHUB_WORKSPACE\Textractor\languages\qtbase_$lang.qm" "$qtDir\translations\" -Force
+            }
+          }
+
+      - name: Build x86 and x64
+        shell: cmd
+        run: |
+          set "SRC=%GITHUB_WORKSPACE%\Textractor"
+          if not exist "%GITHUB_WORKSPACE%\build\x86" mkdir "%GITHUB_WORKSPACE%\build\x86"
+          if not exist "%GITHUB_WORKSPACE%\build\x64" mkdir "%GITHUB_WORKSPACE%\build\x64"
+
+          cd /d "%GITHUB_WORKSPACE%\build\x86"
+          cmake -G "Visual Studio 17 2022" -A Win32 -T ${{ matrix.toolset }} -DQt5_DIR="C:\Qt\%QT_VERSION%\msvc2017\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
+          if errorlevel 1 exit /b 1
+          cmake --build . --config Release -j 1
+          if errorlevel 1 exit /b 1
+
+          cd /d "%GITHUB_WORKSPACE%\build\x64"
+          cmake -G "Visual Studio 17 2022" -A x64 -T ${{ matrix.toolset }} -DQt5_DIR="C:\Qt\%QT_VERSION%\msvc2017_64\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
+          if errorlevel 1 exit /b 1
+          cmake --build . --config Release -j 1
+          if errorlevel 1 exit /b 1
+
+      - name: Package Artifacts
+        shell: pwsh
+        run: |
+          $root = $env:GITHUB_WORKSPACE
+          $builds = "$root\Textractor\builds"
+          $pkg = "$root\pkg"
+
+          Remove-Item -Recurse -Force $pkg -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path "$pkg\x86", "$pkg\x64" | Out-Null
+          Copy-Item "$builds\Release_x86\*" "$pkg\x86\" -Recurse -Force
+          Copy-Item "$builds\Release_x64\*" "$pkg\x64\" -Recurse -Force
+          Copy-Item "$root\Textractor\INSTALL_THIS_UNICODE_FONT.ttf" "$pkg\" -Force
+
+          7z a -mx9 "$root\Textractor_$($env:APP_VERSION).7z" "$pkg\*"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Remove-Item -Recurse -Force $pkg
+
+          $hookDir = "$root\hook"
+          New-Item -ItemType Directory -Force -Path "$hookDir\x86", "$hookDir\x64" | Out-Null
+          Copy-Item "$builds\Release_x86\texthook.dll" "$hookDir\x86\" -Force
+          Copy-Item "$builds\Release_x64\texthook.dll" "$hookDir\x64\" -Force
+          7z a -mx9 "$root\texthook_$($env:APP_VERSION).7z" "$hookDir\*"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Remove-Item -Recurse -Force $hookDir
+
+      - name: Upload Build Artifacts (Files)
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ steps.ver.outputs.version }}
+          path: |
+            Textractor_*.7z
+            texthook_*.7z
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -l
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "Textractor ${{ github.ref_name }}"
+          files: |
+            Textractor_*.7z
+            texthook_*.7z
+          generate_release_notes: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
