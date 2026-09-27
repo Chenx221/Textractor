@@ -17,8 +17,10 @@ permissions:
   contents: write
 
 env:
-  VARIANT: ''
-  QT_VERSION: '5.13.2'
+  VARIANT: '_qt6'
+  QT_VERSION: '6.10.3'
+  QT_32BIT_URL: 'https://dl.iloli.one/qt6/Qt_6.10.3_msvc22_32bit.7z'
+  QT_32BIT_SHA256: '5865677338b54fb59707afb44393c0a105010c0e32af9dc6c00531714b6da294'
 
 jobs:
   build:
@@ -29,13 +31,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: v142 (VS2019 toolset)
-            toolset: v142
-            suffix: ''
-
           - name: v143 (VS2022)
             toolset: v143
-            suffix: _msvc22
+            suffix: ''
 
     steps:
       - name: Checkout repository with submodules
@@ -72,23 +70,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: C:\Qt
-          key: qt-${{ env.QT_VERSION }}-msvc2017-v1
+          key: qt6-${{ env.QT_VERSION }}-msvc2022-v1
 
       - name: Install aqtinstall & Qt ${{ env.QT_VERSION }}
         if: steps.qt-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
+          $ProgressPreference = 'SilentlyContinue'
           python -m pip install --disable-pip-version-check aqtinstall
-          # Win32 (msvc2017)
-          python -m aqt install-qt windows desktop $env:QT_VERSION win32_msvc2017 --outputdir C:\Qt
-          # x64 (msvc2017_64)
-          python -m aqt install-qt windows desktop $env:QT_VERSION win64_msvc2017_64 --outputdir C:\Qt
+          python -m aqt install-qt windows desktop $env:QT_VERSION win64_msvc2022_64 --outputdir C:\Qt -m qt5compat qtwebsockets
+          $archive = "$env:TEMP\qt6-x86.7z"
+          Invoke-WebRequest -Uri $env:QT_32BIT_URL -OutFile $archive
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash -ne $env:QT_32BIT_SHA256) { throw "Qt 32bit hash mismatch" }
+          7z x $archive "-oC:\Qt\$env:QT_VERSION\" -y
 
       - name: Copy Translation Files
         shell: pwsh
         run: |
           $langs = @('zh_CN', 'pt_BR', 'tr')
-          foreach ($qtDir in @("C:\Qt\$env:QT_VERSION\msvc2017", "C:\Qt\$env:QT_VERSION\msvc2017_64")) {
+          foreach ($qtDir in @("C:\Qt\$env:QT_VERSION\msvc2022", "C:\Qt\$env:QT_VERSION\msvc2022_64")) {
+            New-Item -ItemType Directory -Force -Path "$qtDir\translations" | Out-Null
             foreach ($lang in $langs) {
               Copy-Item "$env:GITHUB_WORKSPACE\Textractor\languages\qtbase_$lang.qm" "$qtDir\translations\" -Force
             }
@@ -102,13 +103,13 @@ jobs:
           if not exist "%GITHUB_WORKSPACE%\build\x64" mkdir "%GITHUB_WORKSPACE%\build\x64"
 
           cd /d "%GITHUB_WORKSPACE%\build\x86"
-          cmake -G "Visual Studio 17 2022" -A Win32 -T ${{ matrix.toolset }} -DQt5_DIR="C:\Qt\%QT_VERSION%\msvc2017\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
+          cmake -G "Visual Studio 17 2022" -A Win32 -T ${{ matrix.toolset }} -DQt6_DIR="C:\Qt\%QT_VERSION%\msvc2022\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
           if errorlevel 1 exit /b 1
           cmake --build . --config Release -j 1
           if errorlevel 1 exit /b 1
 
           cd /d "%GITHUB_WORKSPACE%\build\x64"
-          cmake -G "Visual Studio 17 2022" -A x64 -T ${{ matrix.toolset }} -DQt5_DIR="C:\Qt\%QT_VERSION%\msvc2017_64\lib\cmake\Qt5" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
+          cmake -G "Visual Studio 17 2022" -A x64 -T ${{ matrix.toolset }} -DQt6_DIR="C:\Qt\%QT_VERSION%\msvc2022_64\lib\cmake\Qt6" -DCMAKE_BUILD_TYPE=Release -DVERSION=%APP_VERSION% "%SRC%"
           if errorlevel 1 exit /b 1
           cmake --build . --config Release -j 1
           if errorlevel 1 exit /b 1
@@ -125,6 +126,8 @@ jobs:
           Copy-Item "$builds\Release_x86\*" "$pkg\x86\" -Recurse -Force
           Copy-Item "$builds\Release_x64\*" "$pkg\x64\" -Recurse -Force
           Copy-Item "$root\Textractor\INSTALL_THIS_UNICODE_FONT.ttf" "$pkg\" -Force
+          Copy-Item "$root\Textractor\GUI\icon\LICENSE-icons.txt" "$pkg\x86\" -Force
+          Copy-Item "$root\Textractor\GUI\icon\LICENSE-icons.txt" "$pkg\x64\" -Force
 
           $junk = Get-ChildItem $pkg -Recurse -File | Where-Object { $_.Extension -in @('.exp', '.lib') }
           $junk | Remove-Item -Force
