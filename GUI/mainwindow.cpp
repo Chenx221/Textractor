@@ -8,7 +8,6 @@
 #include "attachprocessdialog.h"
 #include <shellapi.h>
 #include <process.h>
-#include <qcryptographichash.h>
 #include <QRegularExpression>
 #include <QStringListModel>
 #include <QScrollBar>
@@ -19,7 +18,6 @@
 #include <QHash>
 #include <QDesktopServices>
 #include <QUrl>
-#include "../extensions/network.h"
 
 extern const char* ATTACH;
 extern const char* LAUNCH;
@@ -82,25 +80,6 @@ extern const wchar_t* ABOUT;
 extern const wchar_t* CL_OPTIONS;
 extern const wchar_t* LAUNCH_FAILED;
 extern const wchar_t* INVALID_CODE;
-extern const wchar_t* WINHTTP_TIMEOUT;
-extern const wchar_t* WINHTTP_NAME_NOT_RESOLVED;
-extern const wchar_t* WINHTTP_CANNOT_CONNECT;
-extern const wchar_t* WINHTTP_CONNECTION_ERROR;
-extern const wchar_t* WINHTTP_SECURE_FAILURE;
-extern const wchar_t* WINHTTP_INVALID_SERVER_RESPONSE;
-extern const wchar_t* WINHTTP_OPERATION_CANCELLED;
-extern const wchar_t* UNKNOWN_ERROR;
-extern const wchar_t* CHECKING_UPDATE;
-extern const wchar_t* OPEN_TEXTHOOK_FAILED;
-extern const wchar_t* CHECK_UPDATE_FAILED;
-extern const wchar_t* CHECK_UPDATE_FAILED_CODE;
-extern const wchar_t* CHECK_UPDATE_FAILED_HTTP;
-extern const wchar_t* CHECK_UPDATE_FAILED_EMPTY_RESPONSE;
-extern const wchar_t* CHECK_UPDATE_FAILED_MALFORMED_RESPONSE;
-extern const wchar_t* CHECK_UPDATE_FAILED_UNKNOWN;
-extern const wchar_t* CHECK_UPDATE_FAILED_UNEXPECTED_RESPONSE;
-extern const wchar_t* TEXTHOOK_UPDATE_AVAILABLE;
-extern const wchar_t* TEXTHOOK_IS_LATEST;
 
 // Language configuration
 extern const char* LANGUAGE_SETTING;
@@ -120,7 +99,6 @@ namespace
 	constexpr auto KEY_FILTER_REPETITION = u8"Filter repetition";
 	constexpr auto KEY_AUTO_ATTACH = u8"Auto attach";
 	constexpr auto KEY_ATTACH_SAVED_ONLY = u8"Auto attach (saved only)";
-	constexpr auto KEY_CHECK_UPDATE = u8"Check for texthook updates on startup";
 	constexpr auto KEY_SHOW_SYSTEM_PROCESSES = u8"Show system processes";
 	constexpr auto KEY_FLUSH_DELAY_SPACING = u8"Flush delay string spacing";
 	constexpr auto KEY_MAX_BUFFER_SIZE = u8"Max buffer size";
@@ -137,7 +115,7 @@ namespace
 	std::atomic<DWORD> selectedProcessId = 0;
 	ExtenWindow* extenWindow = nullptr;
 	std::unordered_set<DWORD> alreadyAttached;
-	bool autoAttach = false, autoAttachSavedOnly = true, checkUpdate = false;
+	bool autoAttach = false, autoAttachSavedOnly = true, checkUpdate = true;
 	bool showSystemProcesses = false;
 	uint64_t savedThreadCtx = 0, savedThreadCtx2 = 0;
 	wchar_t savedThreadCode[1000] = {};
@@ -764,108 +742,6 @@ namespace
 		if (!(QApplication::mouseButtons() & Qt::LeftButton)) ui.textOutput->copy();
 	}
 
-	std::wstring DescribeWinHttpError(DWORD errorCode)
-	{
-		if (errorCode == ERROR_WINHTTP_TIMEOUT) return WINHTTP_TIMEOUT;
-		if (errorCode == ERROR_WINHTTP_NAME_NOT_RESOLVED) return WINHTTP_NAME_NOT_RESOLVED;
-		if (errorCode == ERROR_WINHTTP_CANNOT_CONNECT) return WINHTTP_CANNOT_CONNECT;
-		if (errorCode == ERROR_WINHTTP_CONNECTION_ERROR) return WINHTTP_CONNECTION_ERROR;
-		if (errorCode == ERROR_WINHTTP_SECURE_FAILURE) return WINHTTP_SECURE_FAILURE;
-		if (errorCode == ERROR_WINHTTP_INVALID_SERVER_RESPONSE) return WINHTTP_INVALID_SERVER_RESPONSE;
-		if (errorCode == ERROR_WINHTTP_OPERATION_CANCELLED) return WINHTTP_OPERATION_CANCELLED;
-
-		LPWSTR systemMessage = nullptr;
-		DWORD messageLength = FormatMessageW(
-			FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-			nullptr,
-			errorCode,
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			(LPWSTR)&systemMessage,
-			0,
-			nullptr
-		);
-		if (!messageLength || !systemMessage) return UNKNOWN_ERROR;
-
-		std::wstring message(systemMessage, messageLength);
-		LocalFree(systemMessage);
-		while (!message.empty() && (message.back() == L'\r' || message.back() == L'\n' || message.back() == L' ')) message.pop_back();
-		return message;
-	}
-
-	void CheckForUpdates()
-	{
-		constexpr DWORD UPDATE_CHECK_TIMEOUT_MS = 5000;
-		QString dllPath = QCoreApplication::applicationDirPath() + "/texthook.dll";
-		QFile file(dllPath);
-
-		Host::AddConsoleOutput(CHECKING_UPDATE);
-
-		if (!file.open(QIODevice::ReadOnly)) {
-			Host::AddConsoleOutput(OPEN_TEXTHOOK_FAILED);
-			return;
-		}
-
-		QByteArray fileData = file.readAll();
-		QByteArray hash = QCryptographicHash::hash(fileData, QCryptographicHash::Sha256);
-		QString sha256 = hash.toHex();
-
-		if (HttpRequest httpRequest{
-			L"Textractor",
-			L"api.iloli.one",
-			L"GET",
-			FormatString(L"/checkUpdate?sha256=%S", sha256.toStdString()).c_str(),
-			"",
-			nullptr,
-			INTERNET_DEFAULT_HTTPS_PORT,
-			nullptr,
-			WINHTTP_FLAG_SECURE | WINHTTP_FLAG_ESCAPE_DISABLE,
-			nullptr,
-			nullptr,
-			UPDATE_CHECK_TIMEOUT_MS
-		}) {
-			if (httpRequest.statusCode != 200) {
-				Host::AddConsoleOutput(FormatString(
-					CHECK_UPDATE_FAILED_HTTP,
-					httpRequest.statusCode
-				));
-				return;
-			}
-
-			if (httpRequest.response.empty()) {
-				Host::AddConsoleOutput(CHECK_UPDATE_FAILED_EMPTY_RESPONSE);
-				return;
-			}
-
-			auto response = JSON::Parse(httpRequest.response);
-			if (!response.IsObject()) {
-				Host::AddConsoleOutput(CHECK_UPDATE_FAILED_MALFORMED_RESPONSE);
-				return;
-			}
-
-			if (response[L"error"]) {
-				if (auto errorMessage = response[L"error"].String())
-					Host::AddConsoleOutput(FormatString(CHECK_UPDATE_FAILED, errorMessage->c_str()));
-				else
-					Host::AddConsoleOutput(CHECK_UPDATE_FAILED_UNKNOWN);
-				return;
-			}
-			if (response[L"update"].Boolean()) {
-				if ( *response[L"update"].Boolean()) {
-					Host::AddConsoleOutput(FormatString(TEXTHOOK_UPDATE_AVAILABLE,
-													response[L"current_release_date"].String()->c_str(), response[L"release_date"].String()->c_str(),
-													response[L"download_url"].String()->c_str()));
-				}
-				else {
-					Host::AddConsoleOutput(TEXTHOOK_IS_LATEST);
-				}
-			} else
-				Host::AddConsoleOutput(CHECK_UPDATE_FAILED_UNEXPECTED_RESPONSE);
-		} else {
-			Host::AddConsoleOutput(FormatString(CHECK_UPDATE_FAILED_CODE,
-				DescribeWinHttpError(httpRequest.errorCode).c_str(), httpRequest.errorCode));
-		}
-	}
-
 	std::optional<DWORD> ParseProcessId(const std::wstring& text)
 	{
 		auto isDigit = [](wchar_t character) { return character >= L'0' && character <= L'9'; };
@@ -970,7 +846,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 	Host::Start(ProcessConnected, ProcessDisconnected, ThreadAdded, ThreadRemoved, SentenceReceived);
 	current = &Host::GetThread(Host::console);
 	Host::AddConsoleOutput(ABOUT);
-	if (checkUpdate) CheckForUpdates();
 
 	int argc;
 	std::unique_ptr<LPWSTR[], Functor<LocalFree>> argv(CommandLineToArgvW(GetCommandLineW(), &argc));

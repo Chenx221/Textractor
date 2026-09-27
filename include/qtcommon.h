@@ -24,6 +24,7 @@ static thread_local bool ok;
 
 constexpr auto CONFIG_FILE = u8"Textractor.ini";
 constexpr auto WINDOW = u8"Window";
+constexpr auto KEY_CHECK_UPDATE = u8"Check for updates on startup";
 
 struct Settings : QSettings { Settings(QObject* parent = nullptr) : QSettings(CONFIG_FILE, QSettings::IniFormat, parent) {} };
 struct QTextFile : QFile { QTextFile(QString name, QIODevice::OpenMode mode) : QFile(name) { open(mode | QIODevice::Text); } };
