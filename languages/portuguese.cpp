@@ -36,7 +36,7 @@ Por favor, em caso de problemas, requisição de recurso e/ou funções e de dú
 Você pode fazê-lo por meio da Homepage do Projeto (na aba "Issues") ou via E-mail.
 O código-fonte se encontra disponível na Homepage do projeto sob a licença GPLv3.
 Se você gostou desse projeto, divulgue a todos :))";
-UPDATE_AVAILABLE = L"Atualização disponível: baixe em https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"Uma nova versão do Textractor está disponível!\n\nMais recente: %s\nA sua: %s\n\nClique em OK para abrir a página de download.";
 ALREADY_INJECTED = L"Textractor: já está injetado";
 NEED_32_BIT = L"Textractor: arquitetura errada: apenas o Textractor x86 pode injetar neste processo";
 NEED_64_BIT = L"Textractor: arquitetura errada: apenas o Textractor x64 pode injetar neste processo";

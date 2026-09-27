@@ -95,7 +95,7 @@ ABOUT = L"Textractor " ARCH L" v" VERSION LR"( 作者: Artikash (email: akashmoz
 可以通过项目主页 (Issues 页面) 或通过邮件来联系
 项目主页提供基于 GPLv3 协议的源代码
 如果你喜欢这个项目，请分享给其他人！是时候让 AGTH 退休了 :))";
-UPDATE_AVAILABLE = L"有可用的更新: 请从 https://github.com/Artikash/Textractor/releases 下载";
+UPDATE_AVAILABLE = L"发现新版本 Textractor！\n\n最新版本: %s\n当前版本: %s\n\n点击「确定」打开下载页面。";
 ALREADY_INJECTED = L"Textractor: 已经注入";
 NEED_32_BIT = L"Textractor: 架构不匹配: 请尝试使用32位版本的Textractor";
 NEED_64_BIT = L"Textractor: 架构不匹配: 请尝试使用64位版本的Textractor";

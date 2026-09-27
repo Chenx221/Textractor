@@ -31,7 +31,7 @@ Tolong hubungi saya jika kamu memiliki masalah terkait masalah, permintaan fitur
 Kamu dapat melakukannya lewat halaman utama project (bagian issues) atau lewat email
 Source code tersedia dibawah lisensi GPLv3 di halaman utama project
 Jika kamu menyukai project ini, tolong sebarluaskan project ini :))";
-UPDATE_AVAILABLE = L"Pembaharuan tersedia: pembaharuan dapat di unduh di https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"Versi baru Textractor tersedia!\n\nTerbaru: %s\nMilik Anda: %s\n\nKlik OK untuk membuka halaman unduhan.";
 ALREADY_INJECTED = L"Textractor: sudah ditempelkan";
 INJECT_FAILED = L"Textractor: menempelkan gagal";
 LAUNCH_FAILED = L"Textractor: game tidak dapat dijalankan";

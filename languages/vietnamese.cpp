@@ -94,7 +94,7 @@ Mã nguồn mở dưới bản quyền GPLv3 tại trang chủ dự án
 Nếu bạn thích dự án này, hãy chia sẻ nó với mọi người! Đã đến lúc cho AGTH nghỉ hưu :))";
 CL_OPTIONS = LR"(sử dụng: Textractor [-p{ID tiến trình|"tên tiến trình"}]...
 ví dụ: Textractor -p4466 -p"My Game.exe" sẽ cố gắng inject vào tiến trình có ID 4466 hoặc tên My Game.exe)";
-UPDATE_AVAILABLE = L"Đã có bản cập nhật: tải về tại https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"Có phiên bản Textractor mới!\n\nMới nhất: %s\nCủa bạn: %s\n\nNhấn OK để mở trang tải xuống.";
 ALREADY_INJECTED = L"Textractor: đã inject rồi";
 NEED_32_BIT = L"Textractor: kiến trúc không khớp: chỉ Textractor x86 mới có thể inject tiến trình này";
 NEED_64_BIT = L"Textractor: kiến trúc không khớp: chỉ Textractor x64 mới có thể inject tiến trình này";

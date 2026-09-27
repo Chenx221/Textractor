@@ -26,7 +26,7 @@ ABOUT = L"Textractor " ARCH L" v" VERSION LR"( ได้ถูกพัฒนา
 ถ้าหากพบเจอปัญหาสามารถติดต่อมาได้ รวมไปถึงการแนะนำฟังก์ชั้นที่อยากให้มี หรือ คำถามเกี่ยวกับโปรแกรม Textractor สามารถติดต่อ
 ผ่านหน้าเว็บไซต์หลักผ่านทางหน้า Issue หรือทางอีเมลล์
 Source code สามารถหาได้จากส่วนของ GPLv3 ที่หน้าหลักของเว็บไซต์)";
-UPDATE_AVAILABLE = L"มีอัพเดทใหม่ : สามารถดาวน์โหลดได้จาก https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"มี Textractor เวอร์ชันใหม่!\n\nล่าสุด: %s\nของคุณ: %s\n\nกด OK เพื่อเปิดหน้าดาวน์โหลด";
 ALREADY_INJECTED = L"Textractor: ได้ถูกเชื่อมแล้ว";
 NEED_32_BIT = L"ระบบปฏิบัติการ Textractor ไม่ถูกต้อง : เฉพาะ Textractor x86 เท่านั่นสามารถเชื่อม Process นี้ได้";
 NEED_64_BIT = L"ระบบปฏิบัติการ Textractor ไม่ถูกต้อง : เฉพาะ Textractor x64 เท่านั่นสามารถเชื่อม Process นี้ได้";

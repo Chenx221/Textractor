@@ -29,7 +29,7 @@ Video tutorial: https://github.com/Artikash/Textractor/blob/master/docs/TUTORIAL
 No dudes en conectarme si tienes algún problema, petición de característica o preguntas relacionadas con Textractor
 Puedes hacerlo en la página del proyecto (en el apartado de "Issues") o por correo. Usa el inglés para comunicarte.
 Código fuente disponible bajo GPLv3 en la página del proyecto)";
-UPDATE_AVAILABLE = L"Actualización disponible: descárguela en https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"¡Hay una nueva versión de Textractor!\n\nÚltima: %s\nLa tuya: %s\n\nHaz clic en Aceptar para abrir la página de descarga.";
 ALREADY_INJECTED = L"Textractor: ya inyectado";
 INJECT_FAILED = L"Textractor: no se puede inyectar";
 LAUNCH_FAILED = L"Textractor: no se puede iniciar";
