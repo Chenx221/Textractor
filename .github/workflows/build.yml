@@ -8,6 +8,10 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      release_tag:
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -44,12 +48,16 @@ jobs:
         id: ver
         shell: pwsh
         run: |
-          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+          if ('${{ github.event.inputs.release_tag }}' -ne '') {
+            $base = '${{ github.event.inputs.release_tag }}' -replace '^v', ''
+          } elseif ($env:GITHUB_REF_TYPE -eq 'tag') {
             $base = $env:GITHUB_REF_NAME -replace '^v', ''
           } else {
             $base = Get-Date -Format 'yyMMdd'
           }
-          $version = $base + $env:VARIANT + '${{ matrix.suffix }}'
+          $variant = $env:VARIANT
+          if ($variant -and $base.Contains($variant)) { $variant = '' }
+          $version = $base + $variant + '${{ matrix.suffix }}'
           "APP_VERSION=$version" >> $env:GITHUB_ENV
           "version=$version" >> $env:GITHUB_OUTPUT
           Write-Host "APP_VERSION = $version"
@@ -118,6 +126,10 @@ jobs:
           Copy-Item "$builds\Release_x64\*" "$pkg\x64\" -Recurse -Force
           Copy-Item "$root\Textractor\INSTALL_THIS_UNICODE_FONT.ttf" "$pkg\" -Force
 
+          $junk = Get-ChildItem $pkg -Recurse -File | Where-Object { $_.Extension -in @('.exp', '.lib') }
+          $junk | Remove-Item -Force
+          Write-Host "stripped $($junk.Count) .lib/.exp files"
+
           7z a -mx9 "$root\Textractor_$($env:APP_VERSION).7z" "$pkg\*"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Remove-Item -Recurse -Force $pkg
@@ -130,19 +142,24 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Remove-Item -Recurse -Force $hookDir
 
-      - name: Upload Build Artifacts (Files)
+      - name: Upload Textractor Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: packages-${{ steps.ver.outputs.version }}
-          path: |
-            Textractor_*.7z
-            texthook_*.7z
+          name: Textractor_${{ steps.ver.outputs.version }}
+          path: Textractor_*.7z
+          if-no-files-found: error
+
+      - name: Upload texthook Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: texthook_${{ steps.ver.outputs.version }}
+          path: texthook_*.7z
           if-no-files-found: error
 
   release:
     name: Publish Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.release_tag
     runs-on: ubuntu-latest
     steps:
       - name: Download all workflow artifacts
@@ -156,12 +173,12 @@ jobs:
       - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "Textractor ${{ github.ref_name }}"
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          name: "Textractor ${{ github.event.inputs.release_tag || github.ref_name }}"
           files: |
             Textractor_*.7z
             texthook_*.7z
-          generate_release_notes: true
+          generate_release_notes: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

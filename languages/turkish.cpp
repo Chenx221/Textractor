@@ -17,7 +17,7 @@ Benim tarafımdan yapıldı: Artikash (e-posta: akashmozumdar@gmail.com)
 Textractor ile ilgili tüm sorunlarınız, istekleriniz ve sorularınız için lütfen benimle iletişime geçin
 Benimle, proje ana sayfasından (“issues” kısmından) ya da e-posta aracılığıyla iletişime geçebilirsiniz
 Kaynak kodu GKLv3 koruması altında proje ana sayfasında mevcut)";
-UPDATE_AVAILABLE = L"Güncelleme mevcut: https://github.com/Artikash/Textractor/releases adresinden indirin";
+UPDATE_AVAILABLE = L"Yeni bir Textractor sürümü mevcut!\n\nEn son: %s\nSizinki: %s\n\nİndirme sayfasını açmak için Tamam'a tıklayın.";
 ALREADY_INJECTED = L"Textractor: Zaten enjekte edili";
 NEED_32_BIT = L"Textractor: Mimari uyumsuzluğu: Lütfen Textractor’ın 32 bitlik sürümünü deneyin";
 INJECT_FAILED = L"Textractor: Enjekte edilemedi";

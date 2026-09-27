@@ -90,7 +90,7 @@ Al momento sono in cerca di un nuovo lavoro: contattatemi per email se conoscete
 Se ti piace questo progetto, parlane con tutti per favore :))";
 CL_OPTIONS = LR"(utilizzo: Textractor [-p{process ID|"process name"}]...
 esempio: Textractor -p4466 -p"My Game.exe" sta tentando di inniettare i processi con l'ID 4466 o con il nome My Game.exe)";
-UPDATE_AVAILABLE = L"Aggiornamento disponibile: scaricala da https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"È disponibile una nuova versione di Textractor!\n\nUltima: %s\nLa tua: %s\n\nFai clic su OK per aprire la pagina di download.";
 ALREADY_INJECTED = L"Textractor: già inniettato";
 NEED_32_BIT = L"Textractor: incompatibilità di architettura: solo Textractor x86 può inniettare questo processo";
 NEED_64_BIT = L"Textractor: incompatibilità di architettura: solo Textractor x64 può inniettare questo processo";

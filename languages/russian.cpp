@@ -86,7 +86,7 @@ ABOUT = L"Textractor " ARCH L" в." VERSION LR"( автор: Artikash (email: ak
 Если эта программа вам понравилась, расскажите всем о ней :))";
 CL_OPTIONS = LR"(использование: Textractor [-p{process ID|"process name"}]...
 пример: Textractor -p4466 -p"My Game.exe" попробует присоединиться к процессу с ID 4466 или с именем My Game.exe)";
-UPDATE_AVAILABLE = L"Доступно обновление: загрузите его на https://github.com/Artikash/Textractor/releases";
+UPDATE_AVAILABLE = L"Доступна новая версия Textractor!\n\nПоследняя: %s\nВаша: %s\n\nНажмите «ОК», чтобы открыть страницу загрузки.";
 ALREADY_INJECTED = L"Textractor: уже присоединен";
 NEED_32_BIT = L"Textractor: несоответствие архитектуры: попробуйте Textractor x86 вместо этого";
 NEED_64_BIT = L"Textractor: несоответствие архитектуры: только Textractor x64 может присоединиться к этому процессу";

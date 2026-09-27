@@ -90,7 +90,7 @@ ABOUT = L"Textractor " ARCH L" v" VERSION LR"( 作成者: Artikash (email: akash
 FAQ: https://github.com/Artikash/Textractor/wiki/FAQ
 ソースコードはGPLv3ライセンスで公開されています。
 このプロジェクトを気に入っていただけたら、ぜひ周りに広めてください！)";
-UPDATE_AVAILABLE = L"アップデートがあります：https://github.com/Artikash/Textractor/releases からダウンロードしてください";
+UPDATE_AVAILABLE = L"Textractor の新しいバージョンがあります！\n\n最新: %s\n現在: %s\n\nOK を押すとダウンロードページを開きます。";
 ALREADY_INJECTED = L"Textractor: 既にインジェクトされています";
 NEED_32_BIT = L"Textractor: アーキテクチャ不一致: x86版を使用してください";
 NEED_64_BIT = L"Textractor: アーキテクチャ不一致: x64版を使用してください";

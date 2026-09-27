@@ -145,7 +145,7 @@ Source code available under GPLv3 at project homepage
 If you like this project, please tell everyone about it! It's time to put AGTH down :))";
 const wchar_t* CL_OPTIONS = LR"(usage: Textractor [-p{process ID|"process name"}]...
 example: Textractor -p4466 -p"My Game.exe" tries to inject processes with ID 4466 or with name My Game.exe)";
-const wchar_t* UPDATE_AVAILABLE = L"Update available: download it from https://github.com/Artikash/Textractor/releases";
+const wchar_t* UPDATE_AVAILABLE = L"A new version of Textractor is available!\n\nLatest: %s\nYours: %s\n\nClick OK to open the download page.";
 const wchar_t* ALREADY_INJECTED = L"Textractor: already injected";
 const wchar_t* NEED_32_BIT = L"Textractor: architecture mismatch: only Textractor x86 can inject this process";
 const wchar_t* NEED_64_BIT = L"Textractor: architecture mismatch: only Textractor x64 can inject this process";
