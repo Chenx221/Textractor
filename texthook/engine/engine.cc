@@ -8705,12 +8705,35 @@ bool InsertCotophaHook4()
     0x74, 0x0D                    // je xxx
   };
 
+  const BYTE bytes2[] = {
+    0x55, 
+    0x8B, 0xEC, 
+    0x51,
+    0x53,
+    0x56,
+    0x57,
+    0x8B, 0x7D, XX,
+    0x33, 0xF6,
+    0x8B, 0xD9,
+    0x85, 0xFF,
+    0x74, XX,
+    XX, XX2,
+    0x74, XX,
+    0x46,
+    XX4, XX,
+    0x75, XX
+  };
+
   if (ULONG procAddr = (ULONG)GetProcAddress(GetModuleHandleW(NULL), "glsGetEnabledProcessorType")) {
     ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
     ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
     if (!addr) {
-      ConsoleOutput("vnreng:Cotopha4: pattern not found");
-      return false;
+      addr = MemDbg::findBytes(bytes2, sizeof(bytes2), processStartAddress, processStartAddress + range);
+      if (!addr) {
+        ConsoleOutput("vnreng:Cotopha4: pattern not found");
+        return false;
+      }
+      addr--;
     }
 
     HookParam hp = {};
