@@ -28031,6 +28031,79 @@ bool DxLibFilter(LPVOID data, DWORD *size, HookParam *, BYTE)
   return true;
 }
 
+void CorpsePartyTextFun(DWORD esp_base, HookParam* hp, BYTE, DWORD* data, DWORD* split, DWORD* len)
+{
+  *len = 0;
+  DWORD obj = *(DWORD*)(esp_base + hp->offset);             
+  if (obj < 0x10000) return;
+  int size = *(int*)(obj + 0x14);                      
+  unsigned cap  = *(unsigned*)(obj + 0x18);                 
+  if (size <= 0 || size > 0x1000) return;                   
+  DWORD str = (cap < 8) ? (obj + 4) : *(DWORD*)(obj + 4);   
+  if (str < 0x10000) return;
+  *data = str;
+  *len = (DWORD)size * 2;                                  
+}
+
+bool CorpsePartyFilter(LPVOID data, DWORD* len, HookParam*, BYTE)
+{
+  static const std::wregex re(L"^showtext:\"([^\"]*)\",\"([^\"]*)\",\"([^\"]*)\",\"([^\"]*)\".*$");
+  std::wstring s(reinterpret_cast<const wchar_t*>(data), *len / 2);
+  while (!s.empty() && (s.back() == L'\r' || s.back() == L'\n' || s.back() == L'\0' ||
+                        s.back() == L' '  || s.back() == L'\t'))
+    s.pop_back();                                           
+  std::wsmatch m;
+  if (!std::regex_match(s, m, re))
+    return false;                                           
+
+  std::wstring out;
+  for (size_t i = 1; i < m.size(); ++i)
+    if (m[i].length()) {
+      if (!out.empty()) out += L'\n';
+      out += m[i].str();
+    }
+  if (out.size() * 2 > *len) out.resize(*len / 2);
+  std::memcpy(data, out.c_str(), out.size() * 2);
+  *len = (DWORD)(out.size() * 2);
+  return true;
+}
+
+bool InsertDxLib3Hook()
+{
+  // CorpseParty.exe
+  const BYTE bytes[] = {
+    0x51,
+    0xB8, XX4,
+    0xE8, XX4,
+    0x6A, XX,
+    0x53,
+    0x8D, 0x8C, 0x24, XX4,
+    0xE8, XX4               // hook here
+  };
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (addr) {
+    HookParam hp = {};
+    hp.address = addr + 0x15;
+    hp.offset = pusha_eax_off -4;
+    hp.index = 0;
+    hp.type = USING_STRING | USING_UNICODE;
+    hp.text_fun = CorpsePartyTextFun;   
+    hp.filter_fun = [](LPVOID data, DWORD* len, HookParam* hp, BYTE)
+    {
+      
+      return CorpsePartyFilter(data, len, hp, 0);
+    };
+    ConsoleOutput("vnreng: INSERT DxLib3");
+    NewHook(hp, "DxLib3");
+    return true;
+  }
+  ConsoleOutput("vnreng:DxLib3: pattern not found");
+
+  return false;
+}
+
 bool InsertDxLibHook()
 {
   //by Blu3train
@@ -28088,7 +28161,7 @@ bool InsertDxLibHook()
     return true;
   }
   ConsoleOutput("vnreng:DxLib2: pattern not found");
-  return false;
+  return InsertDxLib3Hook();
 }
 
 bool CodeXFilter(LPVOID data, DWORD *size, HookParam *, BYTE)
