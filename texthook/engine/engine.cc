@@ -13620,6 +13620,43 @@ bool InsertGXPHook()
   return ok;
 }
 
+bool InsertGSPHook() {
+  /*
+  Tested:
+  https://vndb.org/v3787
+  https://vndb.org/v4135
+  https://vndb.org/v5160
+  https://vndb.org/v5292
+  */
+
+  const BYTE bytes[] = {
+    0x6A, XX,
+    0x8B, 0x8D, XX4,
+    0x83, 0xC1, XX,
+    0xE8, XX4,
+    0x83, 0xC0, XX,
+    0x50, 
+    0xE8, XX4 // hook here
+  };
+
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStopAddress);
+  if (!addr) {
+    ConsoleOutput("Textractor:GSP: pattern not found");
+    return false;
+  }
+
+  HookParam hp = {};
+  hp.address = addr + 0x14;
+  hp.offset = pusha_eax_off - 4;
+  hp.type = NO_CONTEXT | DATA_INDIRECT;
+  hp.length_offset = 1;
+  hp.index = 0;
+  ConsoleOutput("Textractor: INSERT GSP");
+  NewHook(hp, "GSP");  
+
+  return true;
+}
+
 namespace { // unnamed, for Anex86
 BYTE JIS_tableH[0x80] = {
   0x00,0x81,0x81,0x82,0x82,0x83,0x83,0x84,

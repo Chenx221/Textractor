@@ -342,6 +342,11 @@ bool DetermineEngineByFile1()
     InsertAdobeAirHook();
     return true;
   }
+
+  if (Util::CheckFile(L"data.gsp")) {
+    InsertGSPHook();
+    return true;
+  }
   return false;
 }
 

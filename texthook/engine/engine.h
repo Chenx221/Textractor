@@ -112,6 +112,7 @@ bool InsertEushullyHook();      // Eushully: AGERC.DLL
 bool InsertExpHook();           // EXP: http://www.exp-inc.jp
 bool InsertFocasLensHook();     // FocasLens: Dat/*.arc, http://www.fo-lens.net
 bool InsertGXPHook();           // GXP: *.gxp
+bool InsertGSPHook();           // GSP: data.gsp
 bool InsertHorkEyeHook();       // HorkEye: resource string
 bool Inserthibiki();
 bool InsertISMHook();           // ISM script engine
