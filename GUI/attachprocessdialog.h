@@ -11,11 +11,12 @@ struct ProcessInfo
 	QString processName;
 	QString windowTitle;
 	bool is64Bit;
+	bool isRenderer; // Chromium/NW.js child process: holds the page, has no window
 	QIcon icon;
 
 	ProcessInfo();
 
-	ProcessInfo(DWORD pid, QString name, QString title, bool is64, HICON ic);
+	ProcessInfo(DWORD pid, QString name, QString title, bool is64, HICON ic, bool renderer = false);
 };
 
 class AttachProcessDialog : public QDialog

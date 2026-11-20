@@ -10,6 +10,15 @@ set(BOOST_REGEX_STANDALONE ON CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(boost_regex)
 
+FetchContent_Declare(
+        json
+        GIT_REPOSITORY https://github.com/nlohmann/json.git
+        GIT_TAG v3.12.0
+        GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(json)
+
 include_directories(. util minhook/include)
 
 if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
@@ -27,6 +36,9 @@ if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 		engine/match64.cc
 		engine/native/pchooks.cc
 		engine/clr/clrhelper.cpp
+		engine/common/text_transport.cc
+		engine/v8/nwjs_v8.cc
+		engine/v8/electron_v8.cc
 		util/ithsys/ithsys.cc
 		util/util.cc
 	)
@@ -45,6 +57,8 @@ else()
 		engine/match.cc
 		engine/match32.cc
 		engine/native/pchooks.cc
+		engine/common/text_transport.cc
+		engine/v8/nwjs_v8.cc
 		util/util.cc
 		util/ithsys/ithsys.cc
 		util/disasm/disasm.cc
@@ -61,4 +75,4 @@ if(NOT CMAKE_BUILD_TYPE MATCHES Debug)
 	target_compile_options(texthook PRIVATE /MT)
 	target_link_options(texthook PRIVATE /NODEFAULTLIB:MSVCRT)
 endif()
-target_link_libraries(texthook minhook Boost::regex)
+target_link_libraries(texthook minhook Boost::regex nlohmann_json::nlohmann_json)

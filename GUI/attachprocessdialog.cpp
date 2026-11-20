@@ -10,13 +10,14 @@ extern const char* REFRESH;
 extern const char* HIDE_INCOMPATIBLE_ARCHITECTURE;
 extern const char* HIDE_NO_TITLE_PROCESS;
 
-ProcessInfo::ProcessInfo() : processId(0), is64Bit(false) {}
+ProcessInfo::ProcessInfo() : processId(0), is64Bit(false), isRenderer(false) {}
 
-ProcessInfo::ProcessInfo(DWORD pid, QString name, QString title, bool is64, HICON ic)
+ProcessInfo::ProcessInfo(DWORD pid, QString name, QString title, bool is64, HICON ic, bool renderer)
 	: processId(pid)
 	, processName(std::move(name))
 	, windowTitle(std::move(title))
 	, is64Bit(is64)
+	, isRenderer(renderer)
 {
 	if (ic) {
 		icon = QIcon(QPixmap::fromImage(QImage::fromHICON(ic)));
@@ -115,10 +116,12 @@ void AttachProcessDialog::populateProcessList()
 	{
 		QString platform = info.is64Bit ? "x64" : "x86";
 		QString titlePart = info.windowTitle.isEmpty() ? "" : QString(" - %1").arg(info.windowTitle);
+		QString rendererPart = info.isRenderer ? " [renderer]" : "";
 
-		QString displayText = QString("%1 [%2]%3 (PID: %4)")
+		QString displayText = QString("%1 [%2]%3%4 (PID: %5)")
 			.arg(info.processName)
 			.arg(platform)
+			.arg(rendererPart)
 			.arg(titlePart)
 			.arg(info.processId);
 
@@ -126,6 +129,7 @@ void AttachProcessDialog::populateProcessList()
 		item->setData(static_cast<unsigned int>(info.processId), Qt::UserRole);
 		item->setData(info.is64Bit, Qt::UserRole + 1);
 		item->setData(info.windowTitle, Qt::UserRole + 2);
+		item->setData(info.isRenderer, Qt::UserRole + 3);
 		item->setEditable(false);
 		model.appendRow(item);
 	}
@@ -146,6 +150,7 @@ void AttachProcessDialog::applyFilters()
 		DWORD pid = item->data(Qt::UserRole).toUInt();
 		bool is64Bit = item->data(Qt::UserRole + 1).toBool();
 		QString windowTitle = item->data(Qt::UserRole + 2).toString();
+		bool isRenderer = item->data(Qt::UserRole + 3).toBool();
 
 		bool matchesFilter = filter.isEmpty() ||
 							displayText.contains(filter, Qt::CaseInsensitive) ||
@@ -153,7 +158,8 @@ void AttachProcessDialog::applyFilters()
 							QString::number(pid, 10).contains(filter, Qt::CaseInsensitive);
 
 		bool matchesArchitecture = !filterArchitecture || (is64Bit == isCurrentProcess64Bit);
-		bool matchesTitle = !filterNoTitle || !windowTitle.isEmpty();
+		// renderers own no window, so the no-title filter must not hide them
+		bool matchesTitle = !filterNoTitle || !windowTitle.isEmpty() || isRenderer;
 
 		ui.processList->setRowHidden(i, !(matchesFilter && matchesArchitecture && matchesTitle));
 	}
