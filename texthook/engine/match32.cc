@@ -6,6 +6,7 @@
 #include "engine/engine.h"
 #include "engine/native/pchooks.h"
 #include "engine/v8/nwjs_v8.h"
+#include "engine/python/renpy_hook.h"
 #include "util/util.h"
 #include "main.h"
 #include "ithsys/ithsys.h"
@@ -1050,6 +1051,10 @@ bool UnsafeDetermineEngineType()
   if (HMODULE nwjs = GetModuleHandleW(L"nw.dll"))
     if (InsertNwjsV8Hook(nwjs))
       return true;
+
+  if (InsertRenpyCpythonHook())
+    return true;
+
   return DeterminePCEngine()
     || DetermineEngineByFile1()
     || DetermineEngineByFile2()

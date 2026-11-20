@@ -39,6 +39,7 @@ if(${CMAKE_SIZEOF_VOID_P} EQUAL 8)
 		engine/common/text_transport.cc
 		engine/v8/nwjs_v8.cc
 		engine/v8/electron_v8.cc
+		engine/python/renpy_hook.cc
 		util/ithsys/ithsys.cc
 		util/util.cc
 	)
@@ -59,6 +60,7 @@ else()
 		engine/native/pchooks.cc
 		engine/common/text_transport.cc
 		engine/v8/nwjs_v8.cc
+		engine/python/renpy_hook.cc
 		util/util.cc
 		util/ithsys/ithsys.cc
 		util/disasm/disasm.cc
