@@ -7,6 +7,7 @@
 #include "defs.h"
 #include "engine/match.h"
 #include "engine/v8/nwjs_v8.h"
+#include "engine/python/renpy_hook.h"
 #ifdef _WIN64
 #include "engine/v8/electron_v8.h"
 #endif
@@ -87,6 +88,7 @@ DWORD WINAPI Pipe(LPVOID)
 	}
 
 	Engine::ShutdownNwjsV8Hook();
+	Engine::ShutdownRenpyCpythonHook();
 #ifdef _WIN64
 	Engine::ShutdownElectronV8Hook();
 #endif
