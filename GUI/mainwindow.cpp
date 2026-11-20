@@ -1,4 +1,4 @@
-﻿#include "mainwindow.h"
+#include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "defs.h"
 #include "module.h"
@@ -252,19 +252,24 @@ namespace
 
 					auto windowTitle = GetProcessMainWindowTitle(processId);
 					bool is64Bit = IsProcess64Bit(processId);
+					bool isRenderer = IsRendererProcess(processId);
 
 					processInfoList.emplace_back(
 						processId,
 						fileName,
 						windowTitle ? S(windowTitle.value()) : QString(),
 						is64Bit,
-						hIcon
+						hIcon,
+						isRenderer
 					);
 				}
 			}
-			std::sort(processInfoList.begin(), processInfoList.end(), [](const auto& one, const auto& two)
+			std::stable_sort(processInfoList.begin(), processInfoList.end(), [](const auto& one, const auto& two)
 			{
-				return QString::compare(one.processName, two.processName, Qt::CaseInsensitive) < 0;
+				int byName = QString::compare(one.processName, two.processName, Qt::CaseInsensitive);
+				if (byName != 0) return byName < 0;
+				if (one.isRenderer != two.isRenderer) return !one.isRenderer;
+				return one.processId < two.processId;
 			});
 			return processInfoList;
 		};

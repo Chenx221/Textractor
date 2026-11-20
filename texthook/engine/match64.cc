@@ -8,6 +8,8 @@
 #include "util.h"
 #include "clr/clrhelper.h"
 #include "cpputil/cppcstring.h"
+#include "v8/nwjs_v8.h"
+#include "v8/electron_v8.h"
 
 // Warning: The offset in ITH has -4 offset comparing to pusha and AGTH
 enum pusha_off
@@ -2819,6 +2821,13 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 		if (Util::CheckFile(L"Rio.arc") && Util::CheckFile(L"Chip*.arc")) {
 			return InsertWillPlus64Hook();
 		}
+
+		if (HMODULE nwjs = GetModuleHandleW(L"nw.dll"))
+			if (InsertNwjsV8Hook(nwjs))
+				return true;
+
+		if (InsertElectronV8Hook())
+			return true;
 
 		if (Util::CheckFile(L"nw.dll") || Util::CheckFile(L"v8_context_snapshot.bin")) {
 			if (Util::IsHookedDllLoaded(L"version.dll", "hookme")) {

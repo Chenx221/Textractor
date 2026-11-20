@@ -1,4 +1,5 @@
 #include <Psapi.h>
+#include "commandline.h"
 
 inline std::optional<std::wstring> GetModuleFilename(DWORD processId, HMODULE module = NULL)
 {
@@ -69,4 +70,48 @@ inline std::vector<std::pair<DWORD, std::optional<std::wstring>>> GetAllProcesse
 	std::vector<std::pair<DWORD, std::optional<std::wstring>>> processes;
 	for (int i = 0; i < spaceUsed / sizeof(DWORD); ++i) processes.push_back({ processIds[i], GetModuleFilename(processIds[i]) });
 	return processes;
+}
+
+inline std::optional<std::wstring> GetProcessCommandLine(DWORD processId)
+{
+	struct UnicodeString { USHORT Length; USHORT MaximumLength; PWSTR Buffer; };
+	using NtQueryInformationProcessFn = LONG(NTAPI*)(HANDLE, ULONG, PVOID, ULONG, PULONG);
+
+	static auto ntQueryInformationProcess = (NtQueryInformationProcessFn)
+		GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "NtQueryInformationProcess");
+	if (!ntQueryInformationProcess) return {};
+
+	AutoHandle<> process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+	if (!process) return {};
+
+	std::vector<BYTE> buffer(sizeof(UnicodeString) + 0x8000);
+	ULONG returned = 0;
+	if (ntQueryInformationProcess(process, 60 /*ProcessCommandLineInformation*/, buffer.data(),
+		(ULONG)buffer.size(), &returned) < 0) return {};
+
+	auto* info = (UnicodeString*)buffer.data();
+	if (!info->Buffer || !info->Length) return {};
+
+	std::wstring commandLine;
+	const BYTE* begin = buffer.data();
+	const BYTE* end = begin + buffer.size();
+	if ((BYTE*)info->Buffer >= begin && (BYTE*)info->Buffer < end)
+		commandLine.assign(info->Buffer, info->Length / sizeof(wchar_t));
+	else
+	{
+		AutoHandle<> reader = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, processId);
+		std::wstring remote(info->Length / sizeof(wchar_t), L'\0');
+		SIZE_T read = 0;
+		if (reader && ReadProcessMemory(reader, info->Buffer, remote.data(), info->Length, &read) &&
+			read == info->Length)
+			commandLine = std::move(remote);
+	}
+	if (commandLine.empty()) return {};
+	return commandLine;
+}
+
+inline bool IsRendererProcess(DWORD processId)
+{
+	auto commandLine = GetProcessCommandLine(processId);
+	return commandLine && IsRendererCommandLine(*commandLine);
 }

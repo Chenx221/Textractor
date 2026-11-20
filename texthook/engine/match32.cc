@@ -1,10 +1,11 @@
-﻿// match.cc
+// match.cc
 // 8/9/2013 jichi
 // Branch: ITH_Engine/engine.cpp, revision 133
 
 #include "engine/match.h"
 #include "engine/engine.h"
 #include "engine/native/pchooks.h"
+#include "engine/v8/nwjs_v8.h"
 #include "util/util.h"
 #include "main.h"
 #include "ithsys/ithsys.h"
@@ -1046,6 +1047,9 @@ bool DetermineNoEngine()
 // Return if succeeded.
 bool UnsafeDetermineEngineType()
 {
+  if (HMODULE nwjs = GetModuleHandleW(L"nw.dll"))
+    if (InsertNwjsV8Hook(nwjs))
+      return true;
   return DeterminePCEngine()
     || DetermineEngineByFile1()
     || DetermineEngineByFile2()
