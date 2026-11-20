@@ -8394,15 +8394,10 @@ bool InsertYuris5Hook()
   return true;
 }
 
-static bool Yuris6Filter(LPVOID data, DWORD *size, HookParam *, BYTE)
+static void YurisCleanText(LPVOID data, DWORD *size)
 {
   auto text = reinterpret_cast<LPSTR>(data);
   auto len = reinterpret_cast<size_t *>(size);
-  static std::string prevText;
-
-  if (prevText.length()==*len && prevText.find(text, 0, *len) != std::string::npos) // Check if the string is present in the previous one
-    return false;
-  prevText.assign(text, *len);
 
   // ruby ＜手水舎／ちょうずや＞
   if (cpp_strnstr(text, "\x81\x83", *len)) {		// \x81\x83 -> '＜'
@@ -8414,13 +8409,41 @@ static bool Yuris6Filter(LPVOID data, DWORD *size, HookParam *, BYTE)
     StringFilterBetween(text, len, "\x81\x5E", 2, "\x81\xE2", 2); // \x81\x5E -> '／' , \x81\xE2 -> '≫'
     StringFilter(text, len, "\x81\xE1", 2);			// \x81\xE1 -> '≪'
   }
+  // ruby 《優汰郎｜ゆうたろう》
+  else if (cpp_strnstr(text, "\x81\x73", *len)) {
+    StringFilterBetween(text, len, "\x81\x62", 2, "\x81\x74", 2);
+    StringFilter(text, len, "\x81\x73", 2);
+  }
 
   CharReplacer(text, len, '=', '-');
   StringCharReplacer(text, len, "\xEF\xF0", 2, ' ');
   StringFilter(text, len, "\xEF\xF2", 2);
   StringFilter(text, len, "\xEF\xF5", 2);
   StringFilter(text, len, "\x81\x98", 2);
+}
 
+static bool YurisDedupAndClean(LPVOID data, DWORD *size, std::string &prevText)
+{
+  auto text = reinterpret_cast<LPSTR>(data);
+  auto len = reinterpret_cast<size_t *>(size);
+
+  if (prevText.length() == *len && prevText.find(text, 0, *len) != std::string::npos)
+    return false;
+  prevText.assign(text, *len);
+
+  YurisCleanText(data, size);
+  return true;
+}
+
+static bool Yuris6Filter(LPVOID data, DWORD *size, HookParam *, BYTE)
+{
+  static std::string prevText;
+  return YurisDedupAndClean(data, size, prevText);
+}
+
+static bool Yuris9Filter(LPVOID data, DWORD *size, HookParam *, BYTE)
+{
+  YurisCleanText(data, size);
   return true;
 }
 
@@ -8578,6 +8601,90 @@ bool InsertYuris8Hook()
   return true;
 }
 
+namespace {
+  bool YurisIsReadableRange(DWORD addr, DWORD size)
+  {
+    if (!addr || !size) return false;
+    if (addr + size < addr) return false;
+    const DWORD end = addr + size;
+    DWORD cur = addr;
+    while (cur < end) {
+      MEMORY_BASIC_INFORMATION mbi = {};
+      if (!::VirtualQuery((LPCVOID)cur, &mbi, sizeof(mbi))) return false;
+      if (mbi.State != MEM_COMMIT) return false;
+      if (mbi.Protect & (PAGE_NOACCESS | PAGE_GUARD)) return false;
+      switch (mbi.Protect & 0xFF) {
+      case PAGE_READONLY:
+      case PAGE_READWRITE:
+      case PAGE_WRITECOPY:
+      case PAGE_EXECUTE_READ:
+      case PAGE_EXECUTE_READWRITE:
+      case PAGE_EXECUTE_WRITECOPY:
+        break;
+      default:
+        return false;
+      }
+      const DWORD regionEnd = (DWORD)mbi.BaseAddress + (DWORD)mbi.RegionSize;
+      if (regionEnd <= cur) return false;
+      cur = regionEnd;
+    }
+    return true;
+  }
+
+} // namespace
+
+bool InsertYuris9Hook()
+{
+  // By Chenx221
+  /* Tested: 
+    魔法騎士リーンフォリア２      488
+    さくらぶトライアングル        494
+  */
+  const BYTE bytes[] = {
+    0x56,           
+    0x8B, 0x0D, XX4,
+    0x8B, 0x41, XX, 
+    0x8B, 0x15, XX4,
+    XX2, XX,        
+    XX2,            
+    0x89, 0x71, XX, 
+    XX2, XX,        
+    0x8B, 0x40, XX, 
+    0x89, 0x41, XX, 
+    0xA1, XX4,                         // mov eax,ds:[00806E8C]
+    0x0F, 0xBE, 0x50, XX               // movsx edx,byte [eax+1C]   ; hook here
+  };
+
+  ULONG range = min(processStopAddress - processStartAddress, MAX_REL_ADDR);
+  ULONG addr = MemDbg::findBytes(bytes, sizeof(bytes), processStartAddress, processStartAddress + range);
+  if (addr) {
+    enum { addr_offset = sizeof(bytes) - 4 };
+    HookParam hp = {};
+    hp.address = addr + addr_offset;
+    hp.offset = pusha_eax_off - 4;
+    hp.text_fun = [](DWORD esp_base, HookParam*, BYTE, DWORD* data, DWORD*, DWORD* len) {
+      const DWORD textObject = regof(eax, esp_base);
+      if (!YurisIsReadableRange(textObject, 0x70)) return;
+      const DWORD strPtr = *(const DWORD*)(textObject + 0x38);
+      const DWORD strLen = *(const DWORD*)(textObject + 0x60);
+      if (!strPtr || strLen == 0 || strLen > 0x1FFE) return;
+      if (!YurisIsReadableRange(strPtr, strLen + 1)) return;
+      if (*(const BYTE*)(strPtr + strLen) != 0) return;
+
+      *data = strPtr;
+      *len = strLen;
+    };
+    hp.type = NO_CONTEXT | USING_STRING;
+    hp.filter_fun = Yuris9Filter;
+
+    ConsoleOutput("Textractor: INSERT YU-RIS9");
+    NewHook(hp, "YU-RIS9");
+    return true;
+  }
+
+  return false;
+}
+
 //bool InsertYurisHook()
 //{ return InsertYuris1Hook() || InsertYuris2Hook() || InsertYuris3Hook(); }
 bool InsertYurisHook()
@@ -8590,6 +8697,7 @@ bool InsertYurisHook()
   ok = InsertYuris6Hook() || ok;
   ok = InsertYuris7Hook() || ok;
   ok = InsertYuris8Hook() || ok;
+  ok = InsertYuris9Hook() || ok;
   return ok;
 }
 
