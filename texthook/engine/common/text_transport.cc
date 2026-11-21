@@ -144,6 +144,8 @@ void StartPipe(const std::string& pipeName)
 {
     if (listenerThread) return;
 
+    stopping.store(false, std::memory_order_release);
+
     auto* copy = new std::string(pipeName);
     listenerThread = CreateThread(nullptr, 0, ListenLoop, copy, 0, nullptr);
     if (!listenerThread)

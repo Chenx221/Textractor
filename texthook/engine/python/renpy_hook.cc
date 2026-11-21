@@ -94,25 +94,11 @@ def _tt_as_text(value):
 # connection that belonged to the previous pipe.
 _tt_state = globals().get('_tt_state')
 if _tt_state is None:
-    _tt_state = {'fd': None, 'last': None}
+    _tt_state = {}
 _tt_state['last'] = None
-try:
-    if _tt_state['fd'] is not None:
-        _tt_os.close(_tt_state['fd'])
-except Exception:
-    pass
-_tt_state['fd'] = None
-
-
-def _tt_open():
-    if _tt_state['fd'] is not None:
-        return _tt_state['fd']
-    try:
-        flags = _tt_os.O_WRONLY | getattr(_tt_os, 'O_BINARY', 0)
-        _tt_state['fd'] = _tt_os.open(_tt_pipe, flags)
-    except OSError:
-        _tt_state['fd'] = None
-    return _tt_state['fd']
+_tt_state.setdefault('seen', [])          # recently emitted texts
+_tt_state.setdefault('seen_set', set())   # same, for O(1) lookups
+_tt_state.setdefault('screen', None)      # last screen that became visible
 
 
 def _tt_emit(who, what):
@@ -120,13 +106,16 @@ def _tt_emit(who, what):
         text = _tt_as_text(what)
         if not text:
             return
-        fd = _tt_open()
-        if fd is None:
-            return
         payload = _tt_json.dumps({u's': _tt_as_text(who), u't': text}, ensure_ascii=False)
-        _tt_os.write(fd, (payload + _tt_unicode('\n')).encode('utf-8'))
+        data = (payload + _tt_unicode('\n')).encode('utf-8')
+        flags = _tt_os.O_WRONLY | getattr(_tt_os, 'O_BINARY', 0)
+        fd = _tt_os.open(_tt_pipe, flags)
+        try:
+            _tt_os.write(fd, data)
+        finally:
+            _tt_os.close(fd)
     except OSError:
-        _tt_state['fd'] = None
+        pass
     except Exception:
         pass
 
@@ -198,18 +187,63 @@ def _tt_clean(text):
     return u''.join(out)
 
 
+def _tt_mark(text):
+    if text in _tt_state['seen_set']:
+        return
+    _tt_state['seen_set'].add(text)
+    _tt_state['seen'].append(text)
+    if len(_tt_state['seen']) > 4000:
+        for old in _tt_state['seen'][:2000]:
+            _tt_state['seen_set'].discard(old)
+        del _tt_state['seen'][:2000]
+
+
+def _tt_line(who, text):
+    if not text.strip():
+        return
+    key = (who, text)
+    if key == _tt_state['last']:
+        return
+    _tt_state['last'] = key
+    _tt_mark(text)
+    _tt_emit(who, text)
+
+
+def _tt_replay(who, text):
+    if not text.strip() or text in _tt_state['seen_set']:
+        return
+    _tt_state['last'] = (who, text)
+    _tt_mark(text)
+    _tt_emit(who, text)
+
+
+def _tt_flush_history():
+    try:
+        import renpy as _r
+        entries = list(_r.store._history_list)[-60:]
+    except Exception:
+        return
+    for entry in entries:
+        try:
+            what = getattr(entry, 'what', None)
+            if not what:
+                continue
+            _tt_replay(_tt_who_name(getattr(entry, 'who', None)),
+                       _tt_clean(_tt_as_text(what)))
+        except Exception:
+            continue
+
+
 def _tt_say(*args, **kwargs):
+    try:
+        _tt_flush_history()
+    except Exception:
+        pass
     try:
         who = args[0] if len(args) > 0 else kwargs.get('who')
         what = args[1] if len(args) > 1 else kwargs.get('what')
         if what is not None:
-            name = _tt_who_name(who)
-            text = _tt_clean(_tt_as_text(what))
-            if text.strip():
-                key = (name, text)
-                if key != _tt_state['last']:
-                    _tt_state['last'] = key
-                    _tt_emit(name, text)
+            _tt_line(_tt_who_name(who), _tt_clean(_tt_as_text(what)))
     except Exception:
         pass
     return _tt_orig_say(*args, **kwargs)
@@ -246,6 +280,27 @@ if not getattr(_tt_ex, '_tt_menu_hooked', False):
         _tt_ex.menuexports.menu = _tt_menu
     except Exception:
         pass
+
+
+import renpy.display.screen as _tt_scr
+if not getattr(_tt_scr.ScreenDisplayable, '_tt_screen_hooked', False):
+    _tt_scr.ScreenDisplayable._tt_screen_hooked = True
+    _tt_orig_update = _tt_scr.ScreenDisplayable.update
+
+    def _tt_update(self):
+        try:
+            try:
+                name = self.screen_name[0]
+            except Exception:
+                name = None
+            if name != _tt_state['screen']:
+                _tt_state['screen'] = name
+                _tt_flush_history()
+        except Exception:
+            pass
+        return _tt_orig_update(self)
+
+    _tt_scr.ScreenDisplayable.update = _tt_update
 )PY";
 
 
@@ -280,45 +335,45 @@ namespace Engine {
 
 bool InsertRenpyCpythonHook()
 {
-    if (installed.exchange(true)) return true;
-
     if (!(GetModuleHandleW(L"librenpython.dll") || GetModuleHandleW(L"_renpy.pyd")))
-    {
-        installed = false;
         return false;
-    }
 
     HMODULE python = FindPythonModule();
     if (!python || !ResolvePy(python))
-    {
-        installed = false;
         return false;
-    }
 
     const char* version = py.GetVersion();
     if (!version || (version[0] != '2' && version[0] != '3'))
     {
         ConsoleOutput("Textractor: Ren'Py engine skipped (unsupported Python %s)",
                       version ? version : "?");
-        installed = false;
         return false;
     }
-    ConsoleOutput("Textractor: Ren'Py engine using Python %s", version);
 
-    static wchar_t identity[8] = {};
-    TextPipe::SetThreadIdentity((uintptr_t)identity);
+    static bool hookRegistered = false;
+    if (!hookRegistered)
+    {
+        ConsoleOutput("Textractor: Ren'Py engine using Python %s", version);
 
-    HookParam hp = {};
-    hp.address = (uint64_t)identity;
-    hp.type = USING_UNICODE | DIRECT_READ | FULL_STRING;
-    NewHook(hp, "renpy");
+        static wchar_t identity[8] = {};
+        TextPipe::SetThreadIdentity((uintptr_t)identity);
+
+        HookParam hp = {};
+        hp.address = (uint64_t)identity;
+        hp.type = USING_UNICODE | DIRECT_READ | FULL_STRING;
+        NewHook(hp, "renpy");
+
+        hookRegistered = true;
+    }
 
     const std::string pipeName = TextPipe::MakePipeName("TextractorRenpy_");
     scriptSource = "_tt_pipe = r'" + pipeName + "'\n";
     scriptSource += kBootstrap;
 
+    TextPipe::StopPipe();
     TextPipe::StartPipe(pipeName);
 
+    installed = true;
     running.store(true);
     CloseHandle(CreateThread(nullptr, 0, BootThread, nullptr, 0, nullptr));
 
