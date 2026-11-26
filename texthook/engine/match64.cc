@@ -2205,6 +2205,48 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			}
 		}
 
+		// Assets.GameUi.Scenario.Text.ScenarioTextComponent::Apply(ScenarioController.TextViewModel model)
+		// マブラヴ ガールズガーデン(X)
+		if ( Util::CheckFile(L"muv_luv_girlsgarden_cl.exe") && Util::CheckFile(L"muv_luv_girlsgarden_cl_Data") ||
+		Util::CheckFile(L"muv_luv_girlsgardenx_cl.exe") && Util::CheckFile(L"muv_luv_girlsgardenx_cl_Data") ) {
+			if (uint64_t apiAddr = TryResolveIl2CppMethod(module, "Assets.GameUi.Scenario.Text", "ScenarioTextComponent", "Apply", -1, nullptr)) {
+				HookParam hp = {};
+				hp.address = apiAddr;
+				hp.type = USING_STRING | USING_UNICODE | NO_CONTEXT;
+				hp.offset = pusha_rdx_off - 4;
+				hp.text_fun = [](uint64_t rsp_base, HookParam* pHp, BYTE, uint64_t* data, uintptr_t* split, DWORD* count) {
+					*count = 0;
+					uint64_t model = regof(rdx, rsp_base);
+					if (!model) return;
+					uint64_t sentence = *(uint64_t*)(model + 0x20);
+					if (!sentence) return;
+					uint64_t str = *(uint64_t*)(sentence + 0x10);
+					if (!str) return;
+					int32_t len = *(int32_t*)(str + 0x10);
+					if (len <= 0 || len > 0x1000) return;
+					*data = str + 0x14;
+					*count = static_cast<DWORD>(len) * sizeof(wchar_t);
+				};
+				hp.filter_fun = [](LPVOID data, DWORD* size, HookParam*, BYTE)
+				{
+					auto text = static_cast<LPWSTR>(data);
+					auto len =  static_cast<size_t>(*size);
+					if (len == 0)
+						return false;
+					static const std::wregex tagPattern(LR"(<[^>]*>)");
+					RegexReplacerW(text, &len, tagPattern, L"");
+					if (len == 0)
+						return false;
+					size_t charLen = len / sizeof(wchar_t);
+					*size = static_cast<DWORD>(len);
+					return true;
+				};
+				NewHook(hp, "Unity_IL2cpp_SP_muvluv_gg");
+				ConsoleOutput("Insert: Unity IL2cpp Game SP Hook (muvluv_gg)");
+				return true;
+			}
+		}
+
 		return false;
 	}
 
