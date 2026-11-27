@@ -1244,7 +1244,7 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			hp.address = addr + 1;
 			hp.offset = -0x44 - 4; //RDI
 			hp.type = USING_STRING | USING_UTF8 | NO_CONTEXT;
-			ConsoleOutput("vnreng: INSERT Artemis Hook ");
+			ConsoleOutput("vnreng: INSERT Artemis Hook");
 			NewHook(hp, "Artemis");
 			return true;
 		}
@@ -1270,7 +1270,7 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			hp.address = addr + 0xB;
 			hp.offset = pusha_rdi_off - 4; //RDI
 			hp.type = USING_STRING | USING_UTF8; // | NO_CONTEXT;
-			ConsoleOutput("vnreng: INSERT Artemis New Hook");
+			ConsoleOutput("vnreng: INSERT Artemis Hook");
 			NewHook(hp, "Artemis");
 			return true;
 		}
@@ -1299,7 +1299,7 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			hp.address = addr + 1;
 			hp.offset = -0x24 - 4; //RDI
 			hp.type = USING_STRING | USING_UTF8;
-			ConsoleOutput("vnreng: INSERT ArtemisEx Hook ");
+			ConsoleOutput("vnreng: INSERT ArtemisEx Hook");
 			NewHook(hp, "ArtemisEx");
 			return true;
 		}
@@ -1324,12 +1324,28 @@ void MonoCallBack(uintptr_t assembly, void *userData) {
 			hp.address = addr + 0x1;
 			hp.offset = pusha_rdx_off - 4; //RDI
 			hp.type = USING_STRING | USING_UTF8; // | NO_CONTEXT;
-			ConsoleOutput("vnreng: INSERT ArtemisEx New Hook ");
+			ConsoleOutput("vnreng: INSERT ArtemisEx Hook");
 			NewHook(hp, "ArtemisEx");
 			return true;
 		}
 
-		ConsoleOutput("vnreng:Artemis: pattern not found");
+		// new
+		// KARAKARA3
+		// 48 89 5C 24 ?? 55 56 57 41 54 41 55 41 56 41 57 48 8D 6C 24 ?? 48 81 EC ?? ?? ?? ?? 0F 29 B4 24 ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 ?? 45 33 ED
+		const BYTE bytes3[] = {
+			0x48, 0x89, 0x5c, 0x24, XX, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8d, 0x6c, 0x24, XX, 0x48, 0x81, 0xec, XX4, 0x0f, 0x29, 0xb4, 0x24, XX4, 0x48, 0x8b, 0x05, XX4, 0x48, 0x33, 0xc4, 0x48, 0x89, 0x45, XX, 0x45, 0x33, 0xed
+		};
+		for (auto addr : Util::SearchMemory(bytes3, sizeof(bytes3), PAGE_EXECUTE, processStartAddress, processStartAddress + range)) {
+			HookParam hp = {};
+			hp.address = addr;
+			hp.offset = pusha_rdx_off - 4;
+			hp.type = USING_STRING | USING_UTF8;
+			ConsoleOutput("vnreng: INSERT ArtemisEx Hook");
+			NewHook(hp, "ArtemisEx");
+			return true;
+		}
+
+		ConsoleOutput("vnreng:ArtemisEx: pattern not found");
 		return false;
 	}
 
