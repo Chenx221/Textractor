@@ -22,18 +22,18 @@ inline constexpr char kBootstrapCore[] = R"JS(
     if (existing && existing.alive) { existing.retarget(pipe); return 'retarget'; }
 
     var net = null;
-    try { net = require('net'); } catch (e) { return 'no-node: ' + e; }
+    try { net = require('net'); } catch (e) { net = null; }
 
     var api = window.__ttNwjsV8 = {
         alive: true, sent: 0, engines: [], errors: [], last: '',
-        pipe: pipe, sock: null, queue: [], fails: 0
+        pipe: pipe, sock: null, queue: [], fails: 0, pipeMode: !!net
     };
 
     /* All transport state lives on api on purpose: the hooks installed by the
        first injection keep calling api.send, which reads api.sock, so a later
        re-attach only has to retarget. */
     api.connect = function () {
-        if (api.sock) return;
+        if (!net || api.sock) return;
         try {
             var s = net.connect(api.pipe);
             api.sock = s;
@@ -59,7 +59,7 @@ inline constexpr char kBootstrapCore[] = R"JS(
     /* A pending connect can stay pending forever: libuv reports neither
        connect nor error when the pipe appears late or the host goes away
        mid-handshake. Recycle it instead of wedging the transport. */
-    setInterval(function () {
+    if (net) setInterval(function () {
         if (api.sock && api.sock.connecting && Date.now() - api.connectAt > 3000) {
             api.fails++;
             if (api.errors.length < 20) api.errors.push('connect timeout #' + api.fails);
@@ -76,7 +76,15 @@ inline constexpr char kBootstrapCore[] = R"JS(
         else if (api.queue.length < 200) api.queue.push(line);
     };
 
+    api.drain = function () {
+        if (api.pipeMode || !api.queue.length) return '';
+        var s = api.queue.join('\n');
+        api.queue.length = 0;
+        return s;
+    };
+
     api.retarget = function (p) {
+        if (!net) return;
         api.pipe = p;
         try { if (api.sock) api.sock.destroy(); } catch (e) {}
         api.sock = null;
@@ -247,6 +255,8 @@ inline constexpr char kBootstrapTyrano[] = R"JS(
 
             /* text tag: merge consecutive text tags, the same way the game
                concatenates them before drawing a single message window */
+            var pendingBreak = false;
+
             if (!tag.text.__ttHook) {
                 tag.text.__ttHook = true;
                 var origShowMessage = tag.text.showMessage;
@@ -256,7 +266,8 @@ inline constexpr char kBootstrapTyrano[] = R"JS(
                     try {
                         pm = pm || {};
                         var val = (pm.val !== undefined) ? String(pm.val) : String(message_str);
-                        sentence = needCombine ? (sentence + '\n' + val) : val;
+                        sentence = needCombine ? (sentence + (pendingBreak ? '\n' : '') + val) : val;
+                        pendingBreak = false;
 
                         var combineNext = false;
                         try {
@@ -266,8 +277,9 @@ inline constexpr char kBootstrapTyrano[] = R"JS(
                                 var next = ftag.array_tag[idx] ? ftag.array_tag[idx].name : '';
                                 var next2 = ftag.array_tag[idx + 1] ? ftag.array_tag[idx + 1].name : '';
                                 if (next === 'text' || next === 'wait' || next === 'r' ||
-                                    next === 'Hxn' || next === 'endmacro' || next === 'ruby' ||
-                                    next === 'glink' || next === 'resetdelay' || next === 'delay') {
+                                    next === 'l' || next === 'Hxn' || next === 'endmacro' ||
+                                    next === 'ruby' || next === 'glink' || next === 'resetdelay' ||
+                                    next === 'delay') {
                                     combineNext = true;
                                 }
                                 if (next2 === '_tb_end_text') combineNext = false;
@@ -297,6 +309,19 @@ inline constexpr char kBootstrapTyrano[] = R"JS(
                     return origShowMessage.apply(this, arguments);
                 };
             }
+
+            function hookBreak(name) {
+                var t = tag[name];
+                if (!t || typeof t.start !== 'function' || t.__ttBreak) return;
+                t.__ttBreak = true;
+                var origStart = t.start;
+                t.start = function () {
+                    pendingBreak = true;
+                    return origStart.apply(this, arguments);
+                };
+            }
+            hookBreak('r');
+            hookBreak('l');
 
             /* menu style choices */
             if (tag.glink && typeof tag.glink.start === 'function' && !tag.glink.__ttHook) {

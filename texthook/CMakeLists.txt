@@ -60,6 +60,7 @@ else()
 		engine/native/pchooks.cc
 		engine/common/text_transport.cc
 		engine/v8/nwjs_v8.cc
+		engine/v8/electron_v8.cc
 		engine/python/renpy_hook.cc
 		util/util.cc
 		util/ithsys/ithsys.cc

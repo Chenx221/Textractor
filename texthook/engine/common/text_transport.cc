@@ -62,6 +62,25 @@ void EmitLineSafe(const std::string& line)
     __try { EmitLine(line); } __except (EXCEPTION_EXECUTE_HANDLER) {}
 }
 
+} // unnamed namespace
+
+void PushLines(const char* data, size_t length)
+{
+    if (!data || !length) return;
+
+    const char* begin = data;
+    const char* end = data + length;
+    for (const char* p = data; p < end; ++p)
+    {
+        if (*p != '\n') continue;
+        if (p > begin) EmitLineSafe(std::string(begin, p - begin));
+        begin = p + 1;
+    }
+    if (begin < end) EmitLineSafe(std::string(begin, end - begin));
+}
+
+namespace {
+
 DWORD WINAPI ReadLoop(LPVOID param)
 {
     HANDLE pipe = (HANDLE)param;

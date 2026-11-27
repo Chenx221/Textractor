@@ -8,9 +8,7 @@
 #include "engine/match.h"
 #include "engine/v8/nwjs_v8.h"
 #include "engine/python/renpy_hook.h"
-#ifdef _WIN64
 #include "engine/v8/electron_v8.h"
-#endif
 #include "texthook.h"
 #include "hookfinder.h"
 #include "util.h"
@@ -89,9 +87,7 @@ DWORD WINAPI Pipe(LPVOID)
 
 	Engine::ShutdownNwjsV8Hook();
 	Engine::ShutdownRenpyCpythonHook();
-#ifdef _WIN64
 	Engine::ShutdownElectronV8Hook();
-#endif
 	MH_Uninitialize();
 	for (auto& hook : *hooks) hook.Clear();
 	FreeLibraryAndExitThread(GetModuleHandleW(ITH_DLL), 0);

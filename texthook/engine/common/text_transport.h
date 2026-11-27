@@ -15,6 +15,11 @@ void StartPipe(const std::string& pipeName);
 
 void StopPipe();
 
+// Feeds already-serialised JSON lines ("{\"s\":\"..\",\"t\":\"..\"}\n") in
+// directly. Used by engines that cannot use the pipe because the page has no
+// Node integration: they pull the queued lines out of the page instead.
+void PushLines(const char* data, size_t length);
+
 } // namespace TextPipe
 
 // EOF
